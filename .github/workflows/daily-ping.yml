@@ -1,0 +1,22 @@
+name: Daily Supabase Healthcheck
+
+on:
+  schedule:
+    # Runs once per day at 00:00 UTC; modify as needed
+    - cron: '0 0 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Run healthcheck
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          chmod +x ./ping/healthcheck.sh
+          ./ping/healthcheck.sh
