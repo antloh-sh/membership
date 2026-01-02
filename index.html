@@ -3,111 +3,152 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AAC Member Portal - Auth Test</title>
+    <title>AAC Member Portal</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f4f7f9; padding: 40px; color: #333; }
-        .container { max-width: 400px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        h2 { margin-top: 0; color: #1c1c1c; }
-        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; background: #3ecf8e; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+        body { font-family: -apple-system, system-ui, sans-serif; background: #f0f2f5; display: flex; justify-content: center; padding: 40px; }
+        .container { width: 100%; max-width: 400px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        h2 { margin-top: 0; color: #1c1c1c; text-align: center; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+        button { width: 100%; padding: 12px; background: #3ecf8e; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         button:hover { background: #34b27b; }
-        #profile-info { margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; display: none; }
-        .role-tag { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; text-transform: uppercase; }
-        .admin { background: #fee2e2; color: #ef4444; }
-        .staff { background: #dcfce7; color: #16a34a; }
-        .error { color: #ef4444; font-size: 0.9rem; margin-top: 10px; }
+        .secondary-btn { background: #f1f5f9; color: #475569; margin-top: 8px; font-size: 0.85rem; }
+        .secondary-btn:hover { background: #e2e8f0; }
+        .hidden { display: none; }
+        .message { margin-top: 15px; font-size: 0.9rem; padding: 12px; border-radius: 6px; text-align: center; }
+        .error { background: #fee2e2; color: #ef4444; border: 1px solid #fecaca; }
+        .success { background: #dcfce7; color: #16a34a; border: 1px solid #bbf7d0; }
+        .role-badge { background: #3b82f6; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>Login</h2>
-    <div id="login-form">
-        <input type="email" id="email" placeholder="Email Address">
+    <h2 id="title">Login</h2>
+    
+    <div id="login-section">
+        <input type="email" id="email" placeholder="Email">
         <input type="password" id="password" placeholder="Password">
         <button onclick="signIn()">Sign In</button>
-        <div id="error-msg" class="error"></div>
+        <button class="secondary-btn" onclick="showView('reset-section')">Forgot Password?</button>
     </div>
 
-    <div id="profile-info">
-        <p>Logged in as: <br><strong id="user-email"></strong></p>
-        <p>Your Access Level: <span id="user-role" class="role-tag"></span></p>
-        <button style="background: #64748b;" onclick="signOut()">Sign Out</button>
+    <div id="reset-section" class="hidden">
+        <p style="font-size: 0.9rem; color: #64748b;">A reset link will be sent to your email.</p>
+        <input type="email" id="reset-email" placeholder="Email Address">
+        <button onclick="sendResetEmail()">Send Reset Link</button>
+        <button class="secondary-btn" onclick="showView('login-section')">Back to Login</button>
     </div>
+
+    <div id="update-password-section" class="hidden">
+        <p style="font-size: 0.9rem; color: #64748b;">Set your new account password.</p>
+        <input type="password" id="new-password" placeholder="New Password">
+        <button onclick="updatePassword()">Update Password</button>
+    </div>
+
+    <div id="profile-info" class="hidden">
+        <p>Logged in as:<br><strong id="user-display"></strong></p>
+        <p>Role: <span id="user-role" class="role-badge"></span></p>
+        <button onclick="signOut()" class="secondary-btn" style="background: #ef4444; color: white;">Sign Out</button>
+    </div>
+
+    <div id="msg" class="message hidden"></div>
 </div>
 
 <script>
-    // 1. INITIALIZE ONCE
+    // CONFIGURATION
     const SUPABASE_URL = 'https://qesgfxwgbggjyvngftee.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_MJQrnWCSsg0naLA9hxkPzQ__diYSGYi';
+    const GITHUB_URL = 'https://antloh-sh.github.io/membership/';
     
-    // Use a unique name like 'supabaseClient'
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    
-    // 2. SIGN IN FUNCTION
+
+    // --- UI CONTROLS ---
+    function showMsg(text, type) {
+        const msgDiv = document.getElementById('msg');
+        msgDiv.innerText = text;
+        msgDiv.className = `message ${type}`;
+        msgDiv.classList.remove('hidden');
+    }
+
+    function showView(sectionId) {
+        const sections = ['login-section', 'reset-section', 'update-password-section', 'profile-info'];
+        sections.forEach(id => document.getElementById(id).classList.add('hidden'));
+        document.getElementById(sectionId).classList.remove('hidden');
+        
+        // Update Title
+        const titles = { 'login-section': 'Login', 'reset-section': 'Reset Password', 'update-password-section': 'New Password', 'profile-info': 'Dashboard' };
+        document.getElementById('title').innerText = titles[sectionId];
+    }
+
+    // --- AUTH FUNCTIONS ---
     async function signIn() {
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
-        const errorDiv = document.getElementById('error-msg');
+        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
         
-        errorDiv.innerText = "Attempting sign in...";
-    
-        try {
-            const { data, error } = await supabaseClient.auth.signInWithPassword({ 
-                email, 
-                password 
-            });
-    
-            if (error) {
-                errorDiv.innerText = "Login Failed: " + error.message;
-                return;
-            }
-    
-            // Success! Now fetch the role
-            showProfile(data.user);
-        } catch (err) {
-            console.error(err);
-            errorDiv.innerText = "An unexpected error occurred. Check console.";
-        }
+        if (error) return showMsg(error.message, 'error');
+        window.location.reload(); 
     }
-    
-    // 3. FETCH ROLE & UPDATE UI
-    async function showProfile(user) {
+
+    async function sendResetEmail() {
+        const email = document.getElementById('reset-email').value;
+        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+            redirectTo: GITHUB_URL, 
+        });
+        
+        if (error) return showMsg(error.message, 'error');
+        showMsg("Reset link sent! Please check your inbox.", "success");
+    }
+
+    async function updatePassword() {
+        const newPassword = document.getElementById('new-password').value;
+        const { error } = await supabaseClient.auth.updateUser({ password: newPassword });
+        
+        if (error) return showMsg(error.message, 'error');
+        showMsg("Password updated! Logging you in...", "success");
+        setTimeout(() => window.location.href = GITHUB_URL, 2000);
+    }
+
+    async function fetchRole(user) {
         const { data: profile, error } = await supabaseClient
             .from('profiles')
             .select('role')
             .eq('id', user.id)
             .single();
-    
-        if (error) {
-            document.getElementById('error-msg').innerText = "Logged in, but no profile found. Remember to add the row to the 'profiles' table!";
-            return;
-        }
-    
+
         if (profile) {
-            document.getElementById('login-form').style.display = 'none';
-            document.getElementById('profile-info').style.display = 'block';
-            document.getElementById('user-email').innerText = user.email;
-            
-            const roleEl = document.getElementById('user-role');
-            roleEl.innerText = profile.role;
-            roleEl.className = 'role-tag ' + profile.role;
+            document.getElementById('user-role').innerText = profile.role.toUpperCase();
+            document.getElementById('user-display').innerText = user.email;
+            showView('profile-info');
+        } else {
+            showMsg("Logged in, but no role found in profiles table.", "error");
+            showView('profile-info');
+            document.getElementById('user-display').innerText = user.email;
+            document.getElementById('user-role').innerText = "NONE";
         }
     }
-    
-    // 4. SIGN OUT
+
     async function signOut() {
         await supabaseClient.auth.signOut();
-        window.location.reload();
+        window.location.href = GITHUB_URL;
     }
-    
-    // 5. AUTO-LOGIN CHECK
+
+    // --- INITIALIZATION ---
     window.onload = async () => {
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        if (user) showProfile(user);
+        // Detect if coming from a Password Reset Email
+        const hash = window.location.hash;
+        if (hash && hash.includes('type=recovery')) {
+            showView('update-password-section');
+        } else {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (user) {
+                fetchRole(user);
+            } else {
+                showView('login-section');
+            }
+        }
     };
 </script>
-
 </body>
 </html>
