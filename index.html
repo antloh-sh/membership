@@ -6,19 +6,33 @@
     <title>AAC Member Portal</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: -apple-system, system-ui, sans-serif; background: #f0f2f5; display: flex; justify-content: center; padding: 40px; }
+        :root { --primary: #3ecf8e; --primary-hover: #34b27b; --bg: #f0f2f5; --text: #1c1c1c; }
+        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); display: flex; justify-content: center; padding: 40px; color: var(--text); }
         .container { width: 100%; max-width: 400px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
-        h2 { margin-top: 0; color: #1c1c1c; text-align: center; }
+        h2 { margin-top: 0; text-align: center; }
+        
+        /* Input Styling */
         input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
-        button { width: 100%; padding: 12px; background: #3ecf8e; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        button:hover { background: #34b27b; }
+        
+        /* Password Eye Styling */
+        .password-wrapper { position: relative; width: 100%; }
+        .toggle-password { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 1.2rem; color: #64748b; user-select: none; }
+        input[type="password"], input[type="text"] { padding-right: 45px; }
+
+        /* Buttons */
+        button { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.2s; }
+        button:hover { background: var(--primary-hover); }
         .secondary-btn { background: #f1f5f9; color: #475569; margin-top: 8px; font-size: 0.85rem; }
         .secondary-btn:hover { background: #e2e8f0; }
+        .logout-btn { background: #ef4444; color: white; margin-top: 20px; }
+        .logout-btn:hover { background: #dc2626; }
+
+        /* Helpers */
         .hidden { display: none; }
         .message { margin-top: 15px; font-size: 0.9rem; padding: 12px; border-radius: 6px; text-align: center; }
         .error { background: #fee2e2; color: #ef4444; border: 1px solid #fecaca; }
         .success { background: #dcfce7; color: #16a34a; border: 1px solid #bbf7d0; }
-        .role-badge { background: #3b82f6; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; }
+        .role-badge { background: #3b82f6; color: white; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -28,28 +42,34 @@
     
     <div id="login-section">
         <input type="email" id="email" placeholder="Email">
-        <input type="password" id="password" placeholder="Password">
+        <div class="password-wrapper">
+            <input type="password" id="password" placeholder="Password">
+            <span class="toggle-password" onclick="togglePasswordVisibility('password')">👁️</span>
+        </div>
         <button onclick="signIn()">Sign In</button>
         <button class="secondary-btn" onclick="showView('reset-section')">Forgot Password?</button>
     </div>
 
     <div id="reset-section" class="hidden">
-        <p style="font-size: 0.9rem; color: #64748b;">A reset link will be sent to your email.</p>
+        <p style="font-size: 0.85rem; color: #64748b;">Enter your email to receive a reset link.</p>
         <input type="email" id="reset-email" placeholder="Email Address">
         <button onclick="sendResetEmail()">Send Reset Link</button>
         <button class="secondary-btn" onclick="showView('login-section')">Back to Login</button>
     </div>
 
     <div id="update-password-section" class="hidden">
-        <p style="font-size: 0.9rem; color: #64748b;">Set your new account password.</p>
-        <input type="password" id="new-password" placeholder="New Password">
+        <p style="font-size: 0.85rem; color: #64748b;">Create a new strong password.</p>
+        <div class="password-wrapper">
+            <input type="password" id="new-password" placeholder="New Password">
+            <span class="toggle-password" onclick="togglePasswordVisibility('new-password')">👁️</span>
+        </div>
         <button onclick="updatePassword()">Update Password</button>
     </div>
 
     <div id="profile-info" class="hidden">
         <p>Logged in as:<br><strong id="user-display"></strong></p>
-        <p>Role: <span id="user-role" class="role-badge"></span></p>
-        <button onclick="signOut()" class="secondary-btn" style="background: #ef4444; color: white;">Sign Out</button>
+        <p>Access Level: <span id="user-role" class="role-badge"></span></p>
+        <button onclick="signOut()" class="logout-btn">Sign Out</button>
     </div>
 
     <div id="msg" class="message hidden"></div>
@@ -63,7 +83,7 @@
     
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // --- UI CONTROLS ---
+    // --- UI HELPERS ---
     function showMsg(text, type) {
         const msgDiv = document.getElementById('msg');
         msgDiv.innerText = text;
@@ -76,37 +96,43 @@
         sections.forEach(id => document.getElementById(id).classList.add('hidden'));
         document.getElementById(sectionId).classList.remove('hidden');
         
-        // Update Title
         const titles = { 'login-section': 'Login', 'reset-section': 'Reset Password', 'update-password-section': 'New Password', 'profile-info': 'Dashboard' };
         document.getElementById('title').innerText = titles[sectionId];
     }
 
-    // --- AUTH FUNCTIONS ---
+    function togglePasswordVisibility(inputId) {
+        const input = document.getElementById(inputId);
+        const icon = input.nextElementSibling;
+        if (input.type === "password") {
+            input.type = "text";
+            icon.innerText = "🔒";
+        } else {
+            input.type = "password";
+            icon.innerText = "👁️";
+        }
+    }
+
+    // --- AUTH ACTIONS ---
     async function signIn() {
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
         const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-        
         if (error) return showMsg(error.message, 'error');
         window.location.reload(); 
     }
 
     async function sendResetEmail() {
         const email = document.getElementById('reset-email').value;
-        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-            redirectTo: GITHUB_URL, 
-        });
-        
+        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: GITHUB_URL });
         if (error) return showMsg(error.message, 'error');
-        showMsg("Reset link sent! Please check your inbox.", "success");
+        showMsg("Check your email for the reset link!", "success");
     }
 
     async function updatePassword() {
         const newPassword = document.getElementById('new-password').value;
         const { error } = await supabaseClient.auth.updateUser({ password: newPassword });
-        
         if (error) return showMsg(error.message, 'error');
-        showMsg("Password updated! Logging you in...", "success");
+        showMsg("Password updated! Redirecting...", "success");
         setTimeout(() => window.location.href = GITHUB_URL, 2000);
     }
 
@@ -117,16 +143,16 @@
             .eq('id', user.id)
             .single();
 
+        document.getElementById('user-display').innerText = user.email;
+        const roleEl = document.getElementById('user-role');
+        
         if (profile) {
-            document.getElementById('user-role').innerText = profile.role.toUpperCase();
-            document.getElementById('user-display').innerText = user.email;
-            showView('profile-info');
+            roleEl.innerText = profile.role.toUpperCase();
         } else {
-            showMsg("Logged in, but no role found in profiles table.", "error");
-            showView('profile-info');
-            document.getElementById('user-display').innerText = user.email;
-            document.getElementById('user-role').innerText = "NONE";
+            roleEl.innerText = "NO PROFILE FOUND";
+            showMsg("Login successful, but please link this ID in the 'profiles' table.", "error");
         }
+        showView('profile-info');
     }
 
     async function signOut() {
@@ -134,19 +160,15 @@
         window.location.href = GITHUB_URL;
     }
 
-    // --- INITIALIZATION ---
+    // --- INIT LOGIC ---
     window.onload = async () => {
-        // Detect if coming from a Password Reset Email
-        const hash = window.location.hash;
-        if (hash && hash.includes('type=recovery')) {
+        // Handle Password Recovery link from email
+        if (window.location.hash && window.location.hash.includes('type=recovery')) {
             showView('update-password-section');
         } else {
             const { data: { user } } = await supabaseClient.auth.getUser();
-            if (user) {
-                fetchRole(user);
-            } else {
-                showView('login-section');
-            }
+            if (user) fetchRole(user);
+            else showView('login-section');
         }
     };
 </script>
