@@ -38,38 +38,53 @@
 </div>
 
 <script>
-    // 1. HARDCODED CONFIGURATION
-    const SUPABASE_URL = 'https://qesgfxwgbggjyvngftee.supabase.co';
-    const SUPABASE_ANON_KEY = 'sb_publishable_MJQrnWCSsg0naLA9hxkPzQ__diYSGYi';
+    // 1. INITIALIZE ONCE
+    const SUPABASE_URL = 'https://your-project-id.supabase.co';
+    const SUPABASE_ANON_KEY = 'your-anon-key-here';
     
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
+    // Use a unique name like 'supabaseClient'
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
     // 2. SIGN IN FUNCTION
     async function signIn() {
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
         const errorDiv = document.getElementById('error-msg');
-        errorDiv.innerText = "";
-
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-
-        if (error) {
-            errorDiv.innerText = error.message;
-            return;
+        
+        errorDiv.innerText = "Attempting sign in...";
+    
+        try {
+            const { data, error } = await supabaseClient.auth.signInWithPassword({ 
+                email, 
+                password 
+            });
+    
+            if (error) {
+                errorDiv.innerText = "Login Failed: " + error.message;
+                return;
+            }
+    
+            // Success! Now fetch the role
+            showProfile(data.user);
+        } catch (err) {
+            console.error(err);
+            errorDiv.innerText = "An unexpected error occurred. Check console.";
         }
-
-        showProfile(data.user);
     }
-
+    
     // 3. FETCH ROLE & UPDATE UI
     async function showProfile(user) {
-        // Fetch role from the profiles table
-        const { data: profile, error } = await supabase
+        const { data: profile, error } = await supabaseClient
             .from('profiles')
             .select('role')
             .eq('id', user.id)
             .single();
-
+    
+        if (error) {
+            document.getElementById('error-msg').innerText = "Logged in, but no profile found. Remember to add the row to the 'profiles' table!";
+            return;
+        }
+    
         if (profile) {
             document.getElementById('login-form').style.display = 'none';
             document.getElementById('profile-info').style.display = 'block';
@@ -78,20 +93,18 @@
             const roleEl = document.getElementById('user-role');
             roleEl.innerText = profile.role;
             roleEl.className = 'role-tag ' + profile.role;
-        } else {
-            document.getElementById('error-msg').innerText = "Auth successful, but no profile found in public.profiles table.";
         }
     }
-
+    
     // 4. SIGN OUT
     async function signOut() {
-        await supabase.auth.signOut();
+        await supabaseClient.auth.signOut();
         window.location.reload();
     }
-
-    // Check if already logged in on page load
+    
+    // 5. AUTO-LOGIN CHECK
     window.onload = async () => {
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await supabaseClient.auth.getUser();
         if (user) showProfile(user);
     };
 </script>
