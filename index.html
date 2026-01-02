@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AAC Member Portal - Auth Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f4f7f9; padding: 40px; color: #333; }
+        .container { max-width: 400px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h2 { margin-top: 0; color: #1c1c1c; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: #3ecf8e; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+        button:hover { background: #34b27b; }
+        #profile-info { margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; display: none; }
+        .role-tag { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; text-transform: uppercase; }
+        .admin { background: #fee2e2; color: #ef4444; }
+        .staff { background: #dcfce7; color: #16a34a; }
+        .error { color: #ef4444; font-size: 0.9rem; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Login</h2>
+    <div id="login-form">
+        <input type="email" id="email" placeholder="Email Address">
+        <input type="password" id="password" placeholder="Password">
+        <button onclick="signIn()">Sign In</button>
+        <div id="error-msg" class="error"></div>
+    </div>
+
+    <div id="profile-info">
+        <p>Logged in as: <br><strong id="user-email"></strong></p>
+        <p>Your Access Level: <span id="user-role" class="role-tag"></span></p>
+        <button style="background: #64748b;" onclick="signOut()">Sign Out</button>
+    </div>
+</div>
+
+<script>
+    // 1. HARDCODED CONFIGURATION
+    const SUPABASE_URL = 'https://qesgfxwgbggjyvngftee.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_MJQrnWCSsg0naLA9hxkPzQ__diYSGYi';
+    
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // 2. SIGN IN FUNCTION
+    async function signIn() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const errorDiv = document.getElementById('error-msg');
+        errorDiv.innerText = "";
+
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+        if (error) {
+            errorDiv.innerText = error.message;
+            return;
+        }
+
+        showProfile(data.user);
+    }
+
+    // 3. FETCH ROLE & UPDATE UI
+    async function showProfile(user) {
+        // Fetch role from the profiles table
+        const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+
+        if (profile) {
+            document.getElementById('login-form').style.display = 'none';
+            document.getElementById('profile-info').style.display = 'block';
+            document.getElementById('user-email').innerText = user.email;
+            
+            const roleEl = document.getElementById('user-role');
+            roleEl.innerText = profile.role;
+            roleEl.className = 'role-tag ' + profile.role;
+        } else {
+            document.getElementById('error-msg').innerText = "Auth successful, but no profile found in public.profiles table.";
+        }
+    }
+
+    // 4. SIGN OUT
+    async function signOut() {
+        await supabase.auth.signOut();
+        window.location.reload();
+    }
+
+    // Check if already logged in on page load
+    window.onload = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) showProfile(user);
+    };
+</script>
+
+</body>
+</html>
