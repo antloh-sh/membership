@@ -11,15 +11,12 @@
         .container { width: 100%; max-width: 450px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
         h2 { margin-top: 0; text-align: center; }
         
-        /* Input Styling */
         input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
         
-        /* Password Eye Styling */
         .password-wrapper { position: relative; width: 100%; }
         .toggle-password { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 1.2rem; color: #64748b; user-select: none; }
         input[type="password"], input[type="text"] { padding-right: 45px; }
 
-        /* Buttons */
         button { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.2s; }
         button:hover { background: var(--primary-hover); }
         .secondary-btn { background: #f1f5f9; color: #475569; margin-top: 8px; font-size: 0.85rem; }
@@ -27,16 +24,16 @@
         .logout-btn { background: #ef4444; color: white; margin-top: 20px; }
         .logout-btn:hover { background: #dc2626; }
 
-        /* Helpers */
         .hidden { display: none; }
         .message { margin-top: 15px; font-size: 0.9rem; padding: 12px; border-radius: 6px; text-align: center; }
         .error { background: #fee2e2; color: #ef4444; border: 1px solid #fecaca; }
         .success { background: #dcfce7; color: #16a34a; border: 1px solid #bbf7d0; }
         .role-badge { background: #3b82f6; color: white; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; }
         
-        /* Search Result Styling */
+        /* Search Styling */
         .search-container { margin-top: 25px; border-top: 2px solid #f0f2f5; padding-top: 20px; }
-        .result-item { background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #e2e8f0; font-size: 0.9rem; }
+        .result-item { background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #e2e8f0; font-size: 0.9rem; line-height: 1.4; }
+        .result-address { color: #64748b; font-size: 0.8rem; margin-top: 4px; display: block; border-top: 1px solid #e2e8f0; padding-top: 4px; }
     </style>
 </head>
 <body>
@@ -77,7 +74,7 @@
         <div class="search-container">
             <h3>Member Search</h3>
             <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 5px;">Search by Name, Reg No, or Phone</p>
-            <input type="text" id="search-input" placeholder="Enter search term...">
+            <input type="text" id="search-input" placeholder="Min. 2 characters...">
             <button onclick="handleSearch()">Search Members</button>
             <div id="search-results" style="margin-top: 15px;"></div>
         </div>
@@ -107,7 +104,6 @@
         const sections = ['login-section', 'reset-section', 'update-password-section', 'profile-info'];
         sections.forEach(id => document.getElementById(id).classList.add('hidden'));
         document.getElementById(sectionId).classList.remove('hidden');
-        
         const titles = { 'login-section': 'Login', 'reset-section': 'Reset Password', 'update-password-section': 'New Password', 'profile-info': 'Dashboard' };
         document.getElementById('title').innerText = titles[sectionId];
     }
@@ -115,20 +111,15 @@
     function togglePasswordVisibility(inputId) {
         const input = document.getElementById(inputId);
         const icon = input.nextElementSibling;
-        if (input.type === "password") {
-            input.type = "text";
-            icon.innerText = "🔒";
-        } else {
-            input.type = "password";
-            icon.innerText = "👁️";
-        }
+        if (input.type === "password") { input.type = "text"; icon.innerText = "🔒"; } 
+        else { input.type = "password"; icon.innerText = "👁️"; }
     }
 
     // --- AUTH ACTIONS ---
     async function signIn() {
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
-        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
         if (error) return showMsg(error.message, 'error');
         window.location.reload(); 
     }
@@ -137,37 +128,26 @@
         const email = document.getElementById('reset-email').value;
         const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: GITHUB_URL });
         if (error) return showMsg(error.message, 'error');
-        showMsg("Check your email for the reset link!", "success");
+        showMsg("Check email for link!", "success");
     }
 
     async function updatePassword() {
         const newPassword = document.getElementById('new-password').value;
         const { error } = await supabaseClient.auth.updateUser({ password: newPassword });
         if (error) return showMsg(error.message, 'error');
-        showMsg("Password updated! Redirecting...", "success");
+        showMsg("Updated! Redirecting...", "success");
         setTimeout(() => window.location.href = GITHUB_URL, 2000);
     }
 
     async function fetchRole(user) {
-        const { data: profile, error } = await supabaseClient
-            .from('profiles')
-            .select('role')
-            .eq('id', user.id)
-            .single();
-
+        const { data: profile } = await supabaseClient.from('profiles').select('role').eq('id', user.id).single();
         document.getElementById('user-display').innerText = user.email;
         const roleEl = document.getElementById('user-role');
-        
-        if (profile) {
-            roleEl.innerText = profile.role.toUpperCase();
-        } else {
-            roleEl.innerText = "NO PROFILE FOUND";
-            showMsg("Login successful, but please link this ID in the 'profiles' table.", "error");
-        }
+        roleEl.innerText = profile ? profile.role.toUpperCase() : "NO PROFILE";
         showView('profile-info');
     }
 
-    // --- UPDATED SEARCH ACTION ---
+    // --- SEARCH LOGIC (WITH ADDRESS) ---
     async function handleSearch() {
         const searchTerm = document.getElementById('search-input').value.trim();
         const resultsDiv = document.getElementById('search-results');
@@ -179,13 +159,13 @@
 
         resultsDiv.innerHTML = "<p>Searching...</p>";
 
-        // RPC call to the SQL function handling the backend logic
+        // Call RPC function
         const { data, error } = await supabaseClient.rpc('search_members_generic', { 
             search_term: searchTerm 
         });
 
-        // The backend raises an exception if records > 5. This error is caught here.
         if (error) {
+            // Catches "Too many results" exception from Postgres
             resultsDiv.innerHTML = `<div class="message error">${error.message}</div>`;
             return;
         }
@@ -195,12 +175,13 @@
             return;
         }
 
-        // Data found (guaranteed to be 5 or fewer by the backend function)
+        // Display results including 'fulladdress' field
         resultsDiv.innerHTML = data.map(member => `
             <div class="result-item">
                 <strong>${member.fullnamenative}</strong><br>
                 <small>Reg No: ${member.registrationdocumentnumber}</small><br>
-                <small>Mob: ${member.mobilephone || 'N/A'} | Home: ${member.homephone || 'N/A'}</small>
+                <small>Contact: ${member.phone || 'N/A'}</small>
+                <span class="result-address">Address: ${member.fulladdress || 'No address provided'}</span>
             </div>
         `).join('');
     }
@@ -210,7 +191,6 @@
         window.location.href = GITHUB_URL;
     }
 
-    // --- INIT LOGIC ---
     window.onload = async () => {
         if (window.location.hash && window.location.hash.includes('type=recovery')) {
             showView('update-password-section');
