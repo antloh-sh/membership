@@ -40,97 +40,38 @@
             font-size: 16px; 
         }
 
-        /* Password wrapper for the Eye Icon */
         .password-wrapper { position: relative; width: 100%; }
         .toggle-password { 
-            position: absolute; 
-            right: 12px; 
-            top: 50%; 
-            transform: translateY(-50%); 
-            cursor: pointer; 
-            font-size: 1.2rem; 
-            color: #64748b; 
-            user-select: none; 
-            z-index: 10;
+            position: absolute; right: 12px; top: 50%; 
+            transform: translateY(-50%); cursor: pointer; 
+            font-size: 1.2rem; color: #64748b; user-select: none; z-index: 10;
         }
 
         button { 
-            width: 100%; 
-            padding: 16px; 
-            background: var(--primary); 
-            color: white; 
-            border: none; 
-            border-radius: 8px; 
-            font-weight: bold; 
-            font-size: 1.1rem; 
-            cursor: pointer; 
-            margin-top: 10px; 
+            width: 100%; padding: 16px; 
+            background: var(--primary); color: white; 
+            border: none; border-radius: 8px; 
+            font-weight: bold; font-size: 1.1rem; 
+            cursor: pointer; margin-top: 10px; 
         }
 
-        .secondary-btn { 
-            background: #f1f5f9; 
-            color: #475569; 
-            font-size: 0.95rem; 
-            padding: 12px;
-        }
+        .secondary-btn { background: #f1f5f9; color: #475569; font-size: 0.95rem; padding: 12px; }
 
         .result-item { 
-            background: #f8fafc; 
-            padding: 20px; 
-            border-radius: 10px; 
-            margin-bottom: 15px; 
+            background: #f8fafc; padding: 20px; 
+            border-radius: 10px; margin-bottom: 15px; 
             border: 1px solid #e2e8f0; 
         }
 
-        .member-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
+        .member-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+        .member-name { font-size: 1.3rem; font-weight: bold; color: #1e293b; }
+        .member-details { font-size: 1.1rem; color: #475569; }
+        .result-address { color: #64748b; font-size: 1rem; margin-top: 12px; padding-top: 12px; border-top: 1px solid #e2e8f0; }
 
-        /* Same formatting for name and nickname */
-        .member-name { 
-            font-size: 1.3rem; 
-            font-weight: bold; 
-            color: #1e293b;
-        }
-
-        .member-details { 
-            font-size: 1.1rem; 
-            color: #475569;
-        }
-
-        .result-address { 
-            color: #64748b; 
-            font-size: 1rem; 
-            margin-top: 12px; 
-            padding-top: 12px; 
-            border-top: 1px solid #e2e8f0; 
-        }
-
-        .nok-btn { 
-            width: auto; 
-            padding: 10px 20px; 
-            font-size: 1rem; 
-            background: #3b82f6; 
-            margin-top: 0; 
-        }
-
-        .nok-container { 
-            margin-top: 15px; 
-            padding: 15px; 
-            background: #ffffff; 
-            border: 1px dashed #3b82f6; 
-            border-radius: 8px; 
-        }
-
-        .nok-entry {
-            font-size: 1.05rem;
-            padding: 10px 0;
-            border-bottom: 1px solid #f1f5f9;
-        }
+        .nok-btn { width: auto; padding: 10px 20px; font-size: 1rem; background: #3b82f6; margin-top: 0; }
+        .nok-container { margin-top: 15px; padding: 15px; background: #ffffff; border: 1px dashed #3b82f6; border-radius: 8px; }
+        
+        .empty-state { text-align: center; padding: 30px; color: #64748b; font-size: 1.1rem; }
 
         .hidden { display: none; }
         .message { padding: 15px; border-radius: 8px; text-align: center; margin-top: 10px; font-weight: bold; }
@@ -154,7 +95,7 @@
     </div>
 
     <div id="reset-section" class="hidden">
-        <p style="font-size: 1rem; color: #64748b; text-align: center;">Enter your email to receive a reset link.</p>
+        <p style="text-align: center;">Enter email for reset link.</p>
         <input type="email" id="reset-email" placeholder="Email Address">
         <button onclick="sendResetEmail()">Send Reset Link</button>
         <button class="secondary-btn" onclick="showView('login-section')">Back to Login</button>
@@ -180,6 +121,28 @@
     
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+    // --- IDLE TIMEOUT LOGIC (15 MINS) ---
+    let idleTimer;
+    function resetIdleTimer() {
+        clearTimeout(idleTimer);
+        // 15 minutes = 900,000 milliseconds
+        idleTimer = setTimeout(autoLogout, 900000); 
+    }
+
+    function autoLogout() {
+        console.log("Session idle for 15 minutes. Logging out...");
+        signOut();
+    }
+
+    // Listen for any interaction to reset the timer
+    window.onload = resetIdleTimer;
+    window.onmousemove = resetIdleTimer;
+    window.onmousedown = resetIdleTimer; 
+    window.ontouchstart = resetIdleTimer; 
+    window.onclick = resetIdleTimer;     
+    window.onkeypress = resetIdleTimer;   
+
+    // --- UI HELPERS ---
     function handleKeyPress(event) { if (event.key === "Enter") handleSearch(); }
 
     function showMsg(text, type) {
@@ -195,19 +158,14 @@
         document.getElementById(sectionId).classList.remove('hidden');
     }
 
-    // Toggle Eye Icon Function
     function togglePasswordVisibility(inputId) {
         const input = document.getElementById(inputId);
         const icon = input.nextElementSibling;
-        if (input.type === "password") {
-            input.type = "text";
-            icon.innerText = "🔒";
-        } else {
-            input.type = "password";
-            icon.innerText = "👁️";
-        }
+        input.type = input.type === "password" ? "text" : "password";
+        icon.innerText = input.type === "password" ? "👁️" : "🔒";
     }
 
+    // --- AUTH ACTIONS ---
     async function signIn() {
         const { error } = await supabaseClient.auth.signInWithPassword({
             email: document.getElementById('email').value,
@@ -215,13 +173,6 @@
         });
         if (error) return showMsg(error.message, 'error');
         window.location.reload();
-    }
-
-    async function sendResetEmail() {
-        const email = document.getElementById('reset-email').value;
-        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: GITHUB_URL });
-        if (error) return showMsg(error.message, 'error');
-        showMsg("Check email for reset link!", "success");
     }
 
     async function handleSearch() {
@@ -238,7 +189,17 @@
             return;
         }
 
-        // Show Name and Nickname (toaddressas) on the same line in bold
+        // --- 1. ENHANCEMENT: NO RESULTS FOUND ---
+        if (!data || data.length === 0) {
+            resultsDiv.innerHTML = `
+                <div class="empty-state">
+                    <p>🚫 No results found for "${term}"</p>
+                    <small>Try a different name or NRIC or phone number.</small>
+                </div>
+            `;
+            return;
+        }
+
         resultsDiv.innerHTML = data.map(member => `
             <div class="result-item">
                 <div class="member-header">
@@ -251,9 +212,7 @@
                     <strong>NRIC:</strong> ${member.registrationdocumentnumber}<br>
                     <strong>Tel:</strong> ${member.phone || 'N/A'}
                 </div>
-                <div class="result-address">
-                    <strong>Address:</strong><br>${member.fulladdress || 'N/A'}
-                </div>
+                <div class="result-address"><strong>Address:</strong><br>${member.fulladdress || 'N/A'}</div>
                 <div id="nok-list-${member.registrationdocumentnumber}" class="nok-container hidden"></div>
             </div>
         `).join('');
@@ -262,35 +221,32 @@
     async function fetchNOK(regNo) {
         const container = document.getElementById(`nok-list-${regNo}`);
         if (!container.classList.contains('hidden')) { container.classList.add('hidden'); return; }
-
         container.classList.remove('hidden');
         container.innerHTML = "Loading NOK...";
-
         const { data } = await supabaseClient.rpc('get_member_nok', { reg_no: regNo });
-
         if (!data || data.length === 0) {
-            container.innerHTML = "No NOK found.";
+            container.innerHTML = "<p style='font-size: 0.9rem;'>No NOK found.</p>";
             return;
         }
-
         container.innerHTML = `
-            <div style="font-weight: bold; color: #3b82f6; margin-bottom: 8px; font-size: 1.1rem;">Family Contacts:</div>
+            <div style="font-weight: bold; color: #3b82f6; margin-bottom: 8px;">Family Contacts:</div>
             ${data.map(nok => `
-                <div class="nok-entry">
-                    <strong>${nok.familymembername}</strong><br>
-                    <span>
-                        Relation: ${nok.relationshiptofollowiltcmasterlist || 'N/A'}<br>
-                        Mobile: ${nok.mobilephone || 'N/A'}<br>
-                        Home: ${nok.homephone || 'N/A'}
-                    </span>
+                <div style="font-size: 1rem; padding: 8px 0; border-bottom: 1px solid #eee;">
+                    <strong>${nok.familymembername}</strong> (${nok.relationshiptofollowiltcmasterlist || 'N/A'})<br>
+                    Mobile: ${nok.mobilephone || 'N/A'}<br>
+                    Home: ${nok.homephone || 'N/A'}
                 </div>
             `).join('')}
         `;
     }
 
-    async function signOut() { await supabaseClient.auth.signOut(); window.location.reload(); }
+    async function signOut() { 
+        await supabaseClient.auth.signOut(); 
+        window.location.href = GITHUB_URL; 
+    }
 
     window.onload = async () => {
+        resetIdleTimer(); // Start timer on load
         const { data: { user } } = await supabaseClient.auth.getUser();
         if (user) {
             showView('profile-info');
