@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AAC Members</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
-        :root { --primary: #3ecf8e; --primary-hover: #34b27b; --bg: #f0f2f5; --text: #1c1c1c; }
+        :root { --primary: #3ecf8e; --primary-hover: #34b27b; --bg: #f0f2f5; --text: #1c1c1c; --admin: #6366f1; }
         
         body { 
             font-family: -apple-system, system-ui, sans-serif; 
@@ -30,7 +31,8 @@
         h2 { margin-top: 0; text-align: center; font-size: 1.6rem; }
         h3 { margin-top: 0; font-size: 1.4rem; }
         
-        input { 
+        /* ADDED: select support for ETL */
+        input, select { 
             width: 100%; 
             padding: 14px; 
             margin: 10px 0; 
@@ -57,6 +59,11 @@
 
         .secondary-btn { background: #f1f5f9; color: #475569; font-size: 0.95rem; padding: 12px; }
 
+        /* ADDED: Tab Navigation Styles */
+        .tab-nav { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab-nav button { margin-top: 0; flex: 1; font-size: 0.9rem; padding: 12px; }
+        .tab-nav button.active { background: #e2e8f0; color: #1e293b; border: 1px solid #cbd5e1; }
+
         .result-item { 
             background: #f8fafc; padding: 20px; 
             border-radius: 10px; margin-bottom: 15px; 
@@ -71,6 +78,9 @@
         .nok-btn { width: auto; padding: 10px 20px; font-size: 1rem; background: #3b82f6; margin-top: 0; }
         .nok-container { margin-top: 15px; padding: 15px; background: #ffffff; border: 1px dashed #3b82f6; border-radius: 8px; }
         
+        /* ADDED: ETL Dropzone Styles */
+        .drop-zone { border: 2px dashed var(--primary); padding: 30px; text-align: center; border-radius: 10px; cursor: pointer; background: #f9fffb; }
+
         .empty-state { text-align: center; padding: 30px; color: #64748b; font-size: 1.1rem; }
 
         .hidden { display: none; }
@@ -101,13 +111,34 @@
         <button class="secondary-btn" onclick="showView('login-section')">Back to Login</button>
     </div>
 
-    <div id="profile-info" class="hidden">
-        <div class="search-container">
-            <h3>Member Search</h3>
-            <input type="text" id="search-input" placeholder="Enter Name, NRIC or Phone#" onkeyup="handleKeyPress(event)">
-            <button onclick="handleSearch()">Search</button>
-            <div id="search-results" style="margin-top: 20px;"></div>
+    <div id="main-app" class="hidden">
+        <div id="nav-tabs" class="tab-nav">
+            <button id="search-tab-btn" class="active" onclick="switchTab('profile-info')">Search</button>
+            <button id="admin-tab-btn" class="hidden" onclick="switchTab('etl-section')" style="background: var(--admin); color: white;">Update Members</button>
         </div>
+
+        <div id="profile-info">
+            <div class="search-container">
+                <h3>Member Search</h3>
+                <input type="text" id="search-input" placeholder="Enter Name, NRIC or Phone#" onkeyup="handleKeyPress(event)">
+                <button onclick="handleSearch()">Search</button>
+                <div id="search-results" style="margin-top: 20px;"></div>
+            </div>
+        </div>
+
+        <div id="etl-section" class="hidden">
+            <h3>📂 Database Sync</h3>
+            <select id="etlType">
+                <option value="membership">Member Details (AACMemberDetails)</option>
+                <option value="family">Family Members (FamilyMembersListing)</option>
+            </select>
+            <div class="drop-zone" onclick="document.getElementById('csvFile').click()">
+                <span id="fileNameDisplay">Tap to select CSV file</span>
+                <input type="file" id="csvFile" class="hidden" accept=".csv" onchange="updateFileNameDisplay()">
+            </div>
+            <button id="importBtn" onclick="runRPCImport()" style="background: #16a34a;">Upload & Sync</button>
+        </div>
+
         <button onclick="signOut()" style="background: #64748b; margin-top: 30px;">Sign Out</button>
     </div>
 
@@ -118,23 +149,43 @@
     const SUPABASE_URL = 'https://qesgfxwgbggjyvngftee.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_MJQrnWCSsg0naLA9hxkPzQ__diYSGYi';
     const GITHUB_URL = 'https://antloh-sh.github.io/membership/';
-    
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // --- ADDED: ETL Config ---
+    const etlConfig = {
+        membership: {
+            rpc: 'import_and_merge_members',
+            mapping: {
+                'RegistrationDocumentNumber': 'registrationdocumentnumber',
+                'FullNameNative': 'fullnamenative',
+                'ToAddressAs': 'toaddressas',
+                'DateOfBirth': 'dateofbirth',
+                'Gender': 'gender',
+                'Phone': 'phone',
+                'ResidesWithinServiceBoundaryStr': 'resideswithinserviceboundarystr',
+                'FullAddress': 'fulladdress'
+            }
+        },
+        family: {
+            rpc: 'import_and_merge_family',
+            mapping: {
+                'Patient_NRIC_Fin_Passport_No___': 'patientnricfinpassportno',
+                'Family_Member_Name__': 'familymembername',
+                'Relationship____To_follow_ILTC_Master_List_': 'relationshiptofollowiltcmasterlist',
+                'Home_Phone': 'homephone',
+                'Mobile_Phone': 'mobilephone'
+            }
+        }
+    };
 
     // --- IDLE TIMEOUT LOGIC (15 MINS) ---
     let idleTimer;
     function resetIdleTimer() {
         clearTimeout(idleTimer);
-        // 15 minutes = 900,000 milliseconds
         idleTimer = setTimeout(autoLogout, 900000); 
     }
+    function autoLogout() { signOut(); }
 
-    function autoLogout() {
-        console.log("Session idle for 15 minutes. Logging out...");
-        signOut();
-    }
-
-    // Listen for any interaction to reset the timer
     window.onload = resetIdleTimer;
     window.onmousemove = resetIdleTimer;
     window.onmousedown = resetIdleTimer; 
@@ -150,12 +201,29 @@
         msgDiv.innerText = text;
         msgDiv.className = `message ${type}`;
         msgDiv.classList.remove('hidden');
+        setTimeout(() => msgDiv.classList.add('hidden'), 5000);
     }
 
     function showView(sectionId) {
-        const sections = ['login-section', 'reset-section', 'profile-info'];
-        sections.forEach(id => document.getElementById(id).classList.add('hidden'));
+        const sections = ['login-section', 'reset-section', 'profile-info', 'etl-section'];
+        sections.forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.classList.add('hidden');
+        });
         document.getElementById(sectionId).classList.remove('hidden');
+    }
+
+    // ADDED: Tab Switching
+    function switchTab(viewId) {
+        showView(viewId);
+        document.querySelectorAll('.tab-nav button').forEach(b => b.classList.remove('active'));
+        document.getElementById(viewId === 'profile-info' ? 'search-tab-btn' : 'admin-tab-btn').classList.add('active');
+    }
+
+    // ADDED: File UI
+    function updateFileNameDisplay() {
+        const f = document.getElementById('csvFile').files[0];
+        document.getElementById('fileNameDisplay').innerText = f ? f.name : "Tap to select CSV file";
     }
 
     function togglePasswordVisibility(inputId) {
@@ -175,6 +243,7 @@
         window.location.reload();
     }
 
+    // --- PRESERVED ORIGINAL SEARCH LOGIC ---
     async function handleSearch() {
         const term = document.getElementById('search-input').value.trim();
         const resultsDiv = document.getElementById('search-results');
@@ -189,7 +258,6 @@
             return;
         }
 
-        // --- 1. ENHANCEMENT: NO RESULTS FOUND ---
         if (!data || data.length === 0) {
             resultsDiv.innerHTML = `
                 <div class="empty-state">
@@ -218,6 +286,7 @@
         `).join('');
     }
 
+    // --- PRESERVED ORIGINAL NOK LOGIC ---
     async function fetchNOK(regNo) {
         const container = document.getElementById(`nok-list-${regNo}`);
         if (!container.classList.contains('hidden')) { container.classList.add('hidden'); return; }
@@ -240,17 +309,53 @@
         `;
     }
 
+    // --- ADDED: ETL RPC IMPORT ---
+    async function runRPCImport() {
+        const file = document.getElementById('csvFile').files[0];
+        const setup = etlConfig[document.getElementById('etlType').value];
+        if (!file) return showMsg("Please select a file.", "error");
+
+        Papa.parse(file, {
+            header: true, skipEmptyLines: true,
+            complete: async function(results) {
+                const transformed = results.data.map(row => {
+                    let r = {};
+                    for (let k in setup.mapping) {
+                        let v = row[k] || "";
+                        if (k === 'ResidesWithinServiceBoundaryStr') v = v.toLowerCase() === 'yes' ? 'true' : 'false';
+                        if (k === 'DateOfBirth' && v.includes('-')) {
+                            const d = new Date(v); if (!isNaN(d)) v = d.toISOString().split('T')[0];
+                        }
+                        r[setup.mapping[k]] = v;
+                    }
+                    return r;
+                });
+                showMsg("Syncing with database...", "success");
+                const { error } = await supabaseClient.rpc(setup.rpc, { import_data: transformed });
+                if (error) return showMsg(error.message, "error");
+                showMsg("Database Sync Successful!", "success");
+            }
+        });
+    }
+
     async function signOut() { 
         await supabaseClient.auth.signOut(); 
         window.location.href = GITHUB_URL; 
     }
 
     window.onload = async () => {
-        resetIdleTimer(); // Start timer on load
+        resetIdleTimer();
         const { data: { user } } = await supabaseClient.auth.getUser();
         if (user) {
-            showView('profile-info');
+            // Updated to main app wrapper
+            document.getElementById('main-app').classList.remove('hidden');
+            document.getElementById('login-section').classList.add('hidden');
             document.getElementById('title').classList.add('hidden');
+            showView('profile-info');
+
+            // ADDED: Admin Check
+            const { data: profile } = await supabaseClient.from('profiles').select('role').eq('id', user.id).single();
+            if (profile?.role === 'admin') document.getElementById('admin-tab-btn').classList.remove('hidden');
         } else {
             showView('login-section');
         }
