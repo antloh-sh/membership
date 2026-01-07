@@ -2,74 +2,140 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AAC Member Portal</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root { --primary: #3ecf8e; --primary-hover: #34b27b; --bg: #f0f2f5; --text: #1c1c1c; }
-        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); display: flex; justify-content: center; padding: 40px; color: var(--text); }
-        .container { width: 100%; max-width: 450px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
-        h2 { margin-top: 0; text-align: center; }
-        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
-        .password-wrapper { position: relative; width: 100%; }
-        .toggle-password { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 1.2rem; color: #64748b; user-select: none; }
-        button { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.2s; }
-        button:hover { background: var(--primary-hover); }
-        .secondary-btn { background: #f1f5f9; color: #475569; margin-top: 8px; font-size: 0.85rem; }
-        .logout-btn { background: #ef4444; color: white; margin-top: 20px; }
-        .hidden { display: none; }
-        .message { margin-top: 15px; font-size: 0.9rem; padding: 12px; border-radius: 6px; text-align: center; }
-        .error { background: #fee2e2; color: #ef4444; border: 1px solid #fecaca; }
-        .success { background: #dcfce7; color: #16a34a; border: 1px solid #bbf7d0; }
-        .role-badge { background: #3b82f6; color: white; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; }
         
-        /* Search Styling */
-        .search-container { margin-top: 25px; border-top: 2px solid #f0f2f5; padding-top: 20px; }
-        .result-item { background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #e2e8f0; font-size: 0.9rem; line-height: 1.4; }
-        .result-address { color: #64748b; font-size: 0.8rem; margin-top: 8px; display: block; border-top: 1px solid #e2e8f0; padding-top: 6px; }
+        /* Mobile-First Adjustments */
+        body { 
+            font-family: -apple-system, system-ui, sans-serif; 
+            background: var(--bg); 
+            display: flex; 
+            justify-content: center; 
+            padding: 15px; /* Reduced padding for mobile edges */
+            color: var(--text); 
+            line-height: 1.6;
+        }
+
+        .container { 
+            width: 100%; 
+            max-width: 500px; 
+            background: white; 
+            padding: 20px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); 
+        }
+
+        h2, h3 { margin-top: 0; text-align: center; font-size: 1.5rem; }
+        
+        input { 
+            width: 100%; 
+            padding: 14px; /* Larger tap area */
+            margin: 10px 0; 
+            border: 1px solid #ddd; 
+            border-radius: 8px; 
+            box-sizing: border-box; 
+            font-size: 16px; /* Prevents iOS zoom-on-focus */
+        }
+
+        button { 
+            width: 100%; 
+            padding: 16px; /* Larger tap area */
+            background: var(--primary); 
+            color: white; 
+            border: none; 
+            border-radius: 8px; 
+            font-weight: bold; 
+            font-size: 1.1rem; 
+            cursor: pointer; 
+            margin-top: 10px; 
+        }
+
+        /* Result Item Optimization */
+        .result-item { 
+            background: #f8fafc; 
+            padding: 18px; 
+            border-radius: 10px; 
+            margin-bottom: 15px; 
+            border: 1px solid #e2e8f0; 
+        }
+
+        .member-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .member-name { 
+            font-size: 1.2rem; /* Larger font for names */
+            font-weight: bold; 
+            color: #1e293b;
+        }
+
+        .member-details { 
+            font-size: 1rem; /* Readable details */
+            color: #475569;
+        }
+
+        .result-address { 
+            color: #64748b; 
+            font-size: 0.95rem; 
+            margin-top: 10px; 
+            padding-top: 10px; 
+            border-top: 1px solid #e2e8f0; 
+        }
+
+        /* NOK Specific Optimization */
+        .nok-btn { 
+            width: auto; 
+            padding: 10px 18px; 
+            font-size: 0.9rem; 
+            background: #3b82f6; 
+            margin-top: 0; 
+        }
+
+        .nok-container { 
+            margin-top: 12px; 
+            padding: 15px; 
+            background: #ffffff; 
+            border: 1px dashed #3b82f6; 
+            border-radius: 8px; 
+        }
+
+        .nok-entry {
+            font-size: 1rem;
+            padding: 8px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .hidden { display: none; }
+        .message { padding: 15px; border-radius: 8px; text-align: center; margin-top: 10px; font-weight: bold; }
+        .error { background: #fee2e2; color: #ef4444; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2 id="title">Login</h2>
+    <h2 id="title">AAC Portal</h2>
     
     <div id="login-section">
         <input type="email" id="email" placeholder="Email">
-        <div class="password-wrapper">
-            <input type="password" id="password" placeholder="Password">
-            <span class="toggle-password" onclick="togglePasswordVisibility('password')">👁️</span>
-        </div>
+        <input type="password" id="password" placeholder="Password">
         <button onclick="signIn()">Sign In</button>
-        <button class="secondary-btn" onclick="showView('reset-section')">Forgot Password?</button>
-    </div>
-
-    <div id="reset-section" class="hidden">
-        <input type="email" id="reset-email" placeholder="Email Address">
-        <button onclick="sendResetEmail()">Send Reset Link</button>
-        <button class="secondary-btn" onclick="showView('login-section')">Back to Login</button>
-    </div>
-
-    <div id="update-password-section" class="hidden">
-        <input type="password" id="new-password" placeholder="New Password">
-        <button onclick="updatePassword()">Update Password</button>
     </div>
 
     <div id="profile-info" class="hidden">
-        <p>Logged in as:<br><strong id="user-display"></strong></p>
-        <p>Access Level: <span id="user-role" class="role-badge"></span></p>
-
         <div class="search-container">
             <h3>Member Search</h3>
-            <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 5px;">Search by Name, NRIC, or Phone</p>
-            
-            <input type="text" id="search-input" placeholder="Search..." onkeyup="handleKeyPress(event)">
-            
-            <button onclick="handleSearch()">Search Members</button>
-            <div id="search-results" style="margin-top: 15px;"></div>
+            <input type="text" id="search-input" placeholder="Enter Name or Reg No..." onkeyup="handleKeyPress(event)">
+            <button onclick="handleSearch()">Search</button>
+            <div id="search-results" style="margin-top: 20px;"></div>
         </div>
-
-        <button onclick="signOut()" class="logout-btn">Sign Out</button>
+        <button onclick="signOut()" style="background: #64748b; margin-top: 30px;">Sign Out</button>
     </div>
 
     <div id="msg" class="message hidden"></div>
@@ -78,109 +144,95 @@
 <script>
     const SUPABASE_URL = 'https://qesgfxwgbggjyvngftee.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_MJQrnWCSsg0naLA9hxkPzQ__diYSGYi';
-    const GITHUB_URL = 'https://antloh-sh.github.io/membership/';
-    
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // --- NEW: Enter Key Handler ---
-    function handleKeyPress(event) {
-        if (event.key === "Enter") {
-            handleSearch();
-        }
-    }
+    function handleKeyPress(event) { if (event.key === "Enter") handleSearch(); }
 
-    // --- AUTH ACTIONS (Same as before) ---
     async function signIn() {
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-        const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-        if (error) return showMsg(error.message, 'error');
-        window.location.reload(); 
-    }
-
-    async function fetchRole(user) {
-        const { data: profile } = await supabaseClient.from('profiles').select('role').eq('id', user.id).single();
-        document.getElementById('user-display').innerText = user.email;
-        const roleEl = document.getElementById('user-role');
-        roleEl.innerText = profile ? profile.role.toUpperCase() : "NO PROFILE";
-        showView('profile-info');
-    }
-
-    // --- UPDATED SEARCH LOGIC ---
-    async function handleSearch() {
-        const searchTerm = document.getElementById('search-input').value.trim();
-        const resultsDiv = document.getElementById('search-results');
-        
-        if (searchTerm.length < 2) {
-            resultsDiv.innerHTML = "<p class='message error'>Please enter at least 2 characters.</p>";
-            return;
+        const { error } = await supabaseClient.auth.signInWithPassword({
+            email: document.getElementById('email').value,
+            password: document.getElementById('password').value
+        });
+        if (error) {
+            const msg = document.getElementById('msg');
+            msg.innerText = error.message;
+            msg.className = "message error";
+            msg.classList.remove('hidden');
+        } else {
+            window.location.reload();
         }
+    }
+
+    async function handleSearch() {
+        const term = document.getElementById('search-input').value.trim();
+        const resultsDiv = document.getElementById('search-results');
+        if (term.length < 2) return;
 
         resultsDiv.innerHTML = "<p>Searching...</p>";
 
-        const { data, error } = await supabaseClient.rpc('search_members_generic', { 
-            search_term: searchTerm 
-        });
+        const { data, error } = await supabaseClient.rpc('search_members_generic', { search_term: term });
 
         if (error) {
             resultsDiv.innerHTML = `<div class="message error">${error.message}</div>`;
             return;
         }
 
-        if (!data || data.length === 0) {
-            resultsDiv.innerHTML = "<p>No members found.</p>";
-            return;
-        }
-
-        // Display results: Name and Nickname (toaddressas) bolded on one line
+        // Display results with larger mobile-friendly layout
         resultsDiv.innerHTML = data.map(member => `
             <div class="result-item">
-                <div style="font-weight: bold; margin-bottom: 4px;">
-                    ${member.fullnamenative} ${member.toaddressas ? `(${member.toaddressas})` : ''}
+                <div class="member-header">
+                    <div class="member-name">
+                        ${member.fullnamenative} ${member.toaddressas ? `<br><span style="color: #3b82f6; font-size: 0.9rem;">(${member.toaddressas})</span>` : ''}
+                    </div>
+                    <button class="nok-btn" onclick="fetchNOK('${member.registrationdocumentnumber}')">NOK</button>
                 </div>
-                <div>
-                    <small>NRIC: ${member.registrationdocumentnumber}</small><br>
-                    <small>Contact: ${member.phone || 'N/A'}</small>
+                <div class="member-details">
+                    <strong>Reg:</strong> ${member.registrationdocumentnumber}<br>
+                    <strong>Tel:</strong> ${member.phone || 'N/A'}
                 </div>
                 <div class="result-address">
-                    Address: ${member.fulladdress || 'N/A'}
+                    <strong>Address:</strong><br>${member.fulladdress || 'N/A'}
                 </div>
+                <div id="nok-list-${member.registrationdocumentnumber}" class="nok-container hidden"></div>
             </div>
         `).join('');
     }
 
-    // UI Helpers (Omitted for brevity, keep your original showView, togglePasswordVisibility, etc.)
-    function showMsg(text, type) {
-        const msgDiv = document.getElementById('msg');
-        msgDiv.innerText = text;
-        msgDiv.className = `message ${type}`;
-        msgDiv.classList.remove('hidden');
+    async function fetchNOK(regNo) {
+        const container = document.getElementById(`nok-list-${regNo}`);
+        if (!container.classList.contains('hidden')) { container.classList.add('hidden'); return; }
+
+        container.classList.remove('hidden');
+        container.innerHTML = "Loading NOK...";
+
+        const { data } = await supabaseClient.rpc('get_member_nok', { reg_no: regNo });
+
+        if (!data || data.length === 0) {
+            container.innerHTML = "No NOK found.";
+            return;
+        }
+
+        // Detailed NOK display for mobile
+        container.innerHTML = `
+            <div style="font-weight: bold; color: #3b82f6; margin-bottom: 5px;">Family Contacts:</div>
+            ${data.map(nok => `
+                <div class="nok-entry">
+                    <strong>${nok.familymembername}</strong><br>
+                    <span style="font-size: 0.9rem;">
+                        Relation: ${nok.relationshiptofollowiltcmasterlist || 'N/A'}<br>
+                        Mob: ${nok.mobilephone || 'N/A'}<br>
+                        Home: ${nok.homephone || 'N/A'}
+                    </span>
+                </div>
+            `).join('')}
+        `;
     }
 
-    function showView(sectionId) {
-        const sections = ['login-section', 'reset-section', 'update-password-section', 'profile-info'];
-        sections.forEach(id => document.getElementById(id).classList.add('hidden'));
-        document.getElementById(sectionId).classList.remove('hidden');
-        const titles = { 'login-section': 'Login', 'reset-section': 'Reset Password', 'update-password-section': 'New Password', 'profile-info': 'Dashboard' };
-        document.getElementById('title').innerText = titles[sectionId];
-    }
-
-    function togglePasswordVisibility(inputId) {
-        const input = document.getElementById(inputId);
-        const icon = input.nextElementSibling;
-        if (input.type === "password") { input.type = "text"; icon.innerText = "🔒"; } 
-        else { input.type = "password"; icon.innerText = "👁️"; }
-    }
-
-    async function signOut() {
-        await supabaseClient.auth.signOut();
-        window.location.href = GITHUB_URL;
-    }
+    async function signOut() { await supabaseClient.auth.signOut(); window.location.reload(); }
 
     window.onload = async () => {
         const { data: { user } } = await supabaseClient.auth.getUser();
-        if (user) fetchRole(user);
-        else showView('login-section');
+        if (user) document.getElementById('profile-info').classList.remove('hidden'), document.getElementById('login-section').classList.add('hidden');
     };
 </script>
 </body>
