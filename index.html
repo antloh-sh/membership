@@ -3,18 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AAC Member Portal</title>
+    <title>AAC Members</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root { --primary: #3ecf8e; --primary-hover: #34b27b; --bg: #f0f2f5; --text: #1c1c1c; }
         
-        /* Mobile-First Adjustments */
         body { 
             font-family: -apple-system, system-ui, sans-serif; 
             background: var(--bg); 
             display: flex; 
             justify-content: center; 
-            padding: 15px; /* Reduced padding for mobile edges */
+            padding: 15px; 
             color: var(--text); 
             line-height: 1.6;
         }
@@ -28,21 +27,22 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.05); 
         }
 
-        h2, h3 { margin-top: 0; text-align: center; font-size: 1.5rem; }
+        h2 { margin-top: 0; text-align: center; font-size: 1.6rem; }
+        h3 { margin-top: 0; font-size: 1.4rem; }
         
         input { 
             width: 100%; 
-            padding: 14px; /* Larger tap area */
+            padding: 14px; 
             margin: 10px 0; 
             border: 1px solid #ddd; 
             border-radius: 8px; 
             box-sizing: border-box; 
-            font-size: 16px; /* Prevents iOS zoom-on-focus */
+            font-size: 16px; 
         }
 
         button { 
             width: 100%; 
-            padding: 16px; /* Larger tap area */
+            padding: 16px; 
             background: var(--primary); 
             color: white; 
             border: none; 
@@ -53,10 +53,16 @@
             margin-top: 10px; 
         }
 
-        /* Result Item Optimization */
+        .secondary-btn { 
+            background: #f1f5f9; 
+            color: #475569; 
+            font-size: 0.95rem; 
+            padding: 12px;
+        }
+
         .result-item { 
             background: #f8fafc; 
-            padding: 18px; 
+            padding: 20px; 
             border-radius: 10px; 
             margin-bottom: 15px; 
             border: 1px solid #e2e8f0; 
@@ -67,39 +73,38 @@
             justify-content: space-between;
             align-items: flex-start;
             gap: 10px;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
         }
 
         .member-name { 
-            font-size: 1.2rem; /* Larger font for names */
+            font-size: 1.3rem; 
             font-weight: bold; 
             color: #1e293b;
         }
 
         .member-details { 
-            font-size: 1rem; /* Readable details */
+            font-size: 1.1rem; 
             color: #475569;
         }
 
         .result-address { 
             color: #64748b; 
-            font-size: 0.95rem; 
-            margin-top: 10px; 
-            padding-top: 10px; 
+            font-size: 1rem; 
+            margin-top: 12px; 
+            padding-top: 12px; 
             border-top: 1px solid #e2e8f0; 
         }
 
-        /* NOK Specific Optimization */
         .nok-btn { 
             width: auto; 
-            padding: 10px 18px; 
-            font-size: 0.9rem; 
+            padding: 10px 20px; 
+            font-size: 1rem; 
             background: #3b82f6; 
             margin-top: 0; 
         }
 
         .nok-container { 
-            margin-top: 12px; 
+            margin-top: 15px; 
             padding: 15px; 
             background: #ffffff; 
             border: 1px dashed #3b82f6; 
@@ -107,31 +112,40 @@
         }
 
         .nok-entry {
-            font-size: 1rem;
-            padding: 8px 0;
+            font-size: 1.05rem;
+            padding: 10px 0;
             border-bottom: 1px solid #f1f5f9;
         }
 
         .hidden { display: none; }
         .message { padding: 15px; border-radius: 8px; text-align: center; margin-top: 10px; font-weight: bold; }
         .error { background: #fee2e2; color: #ef4444; }
+        .success { background: #dcfce7; color: #16a34a; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2 id="title">AAC Portal</h2>
+    <h2 id="title">AAC Members</h2>
     
     <div id="login-section">
         <input type="email" id="email" placeholder="Email">
         <input type="password" id="password" placeholder="Password">
         <button onclick="signIn()">Sign In</button>
+        <button class="secondary-btn" onclick="showView('reset-section')">Forgot Password?</button>
+    </div>
+
+    <div id="reset-section" class="hidden">
+        <p style="font-size: 1rem; color: #64748b; text-align: center;">Enter your email to receive a reset link.</p>
+        <input type="email" id="reset-email" placeholder="Email Address">
+        <button onclick="sendResetEmail()">Send Reset Link</button>
+        <button class="secondary-btn" onclick="showView('login-section')">Back to Login</button>
     </div>
 
     <div id="profile-info" class="hidden">
         <div class="search-container">
             <h3>Member Search</h3>
-            <input type="text" id="search-input" placeholder="Enter Name or Reg No..." onkeyup="handleKeyPress(event)">
+            <input type="text" id="search-input" placeholder="Enter Name, NRIC or Phone#" onkeyup="handleKeyPress(event)">
             <button onclick="handleSearch()">Search</button>
             <div id="search-results" style="margin-top: 20px;"></div>
         </div>
@@ -144,23 +158,39 @@
 <script>
     const SUPABASE_URL = 'https://qesgfxwgbggjyvngftee.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_MJQrnWCSsg0naLA9hxkPzQ__diYSGYi';
+    const GITHUB_URL = 'https://antloh-sh.github.io/membership/';
+    
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     function handleKeyPress(event) { if (event.key === "Enter") handleSearch(); }
+
+    function showMsg(text, type) {
+        const msgDiv = document.getElementById('msg');
+        msgDiv.innerText = text;
+        msgDiv.className = `message ${type}`;
+        msgDiv.classList.remove('hidden');
+    }
+
+    function showView(sectionId) {
+        const sections = ['login-section', 'reset-section', 'profile-info'];
+        sections.forEach(id => document.getElementById(id).classList.add('hidden'));
+        document.getElementById(sectionId).classList.remove('hidden');
+    }
 
     async function signIn() {
         const { error } = await supabaseClient.auth.signInWithPassword({
             email: document.getElementById('email').value,
             password: document.getElementById('password').value
         });
-        if (error) {
-            const msg = document.getElementById('msg');
-            msg.innerText = error.message;
-            msg.className = "message error";
-            msg.classList.remove('hidden');
-        } else {
-            window.location.reload();
-        }
+        if (error) return showMsg(error.message, 'error');
+        window.location.reload();
+    }
+
+    async function sendResetEmail() {
+        const email = document.getElementById('reset-email').value;
+        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: GITHUB_URL });
+        if (error) return showMsg(error.message, 'error');
+        showMsg("Check email for reset link!", "success");
     }
 
     async function handleSearch() {
@@ -177,17 +207,16 @@
             return;
         }
 
-        // Display results with larger mobile-friendly layout
         resultsDiv.innerHTML = data.map(member => `
             <div class="result-item">
                 <div class="member-header">
                     <div class="member-name">
-                        ${member.fullnamenative} ${member.toaddressas ? `<br><span style="color: #3b82f6; font-size: 0.9rem;">(${member.toaddressas})</span>` : ''}
+                        ${member.fullnamenative} ${member.toaddressas ? `<br><span style="color: #3b82f6; font-size: 1rem;">(${member.toaddressas})</span>` : ''}
                     </div>
                     <button class="nok-btn" onclick="fetchNOK('${member.registrationdocumentnumber}')">NOK</button>
                 </div>
                 <div class="member-details">
-                    <strong>Reg:</strong> ${member.registrationdocumentnumber}<br>
+                    <strong>NRIC:</strong> ${member.registrationdocumentnumber}<br>
                     <strong>Tel:</strong> ${member.phone || 'N/A'}
                 </div>
                 <div class="result-address">
@@ -212,15 +241,14 @@
             return;
         }
 
-        // Detailed NOK display for mobile
         container.innerHTML = `
-            <div style="font-weight: bold; color: #3b82f6; margin-bottom: 5px;">Family Contacts:</div>
+            <div style="font-weight: bold; color: #3b82f6; margin-bottom: 8px; font-size: 1.1rem;">Family Contacts:</div>
             ${data.map(nok => `
                 <div class="nok-entry">
                     <strong>${nok.familymembername}</strong><br>
-                    <span style="font-size: 0.9rem;">
+                    <span>
                         Relation: ${nok.relationshiptofollowiltcmasterlist || 'N/A'}<br>
-                        Mob: ${nok.mobilephone || 'N/A'}<br>
+                        Mobile: ${nok.mobilephone || 'N/A'}<br>
                         Home: ${nok.homephone || 'N/A'}
                     </span>
                 </div>
@@ -232,7 +260,12 @@
 
     window.onload = async () => {
         const { data: { user } } = await supabaseClient.auth.getUser();
-        if (user) document.getElementById('profile-info').classList.remove('hidden'), document.getElementById('login-section').classList.add('hidden');
+        if (user) {
+            showView('profile-info');
+            document.getElementById('title').classList.add('hidden');
+        } else {
+            showView('login-section');
+        }
     };
 </script>
 </body>
