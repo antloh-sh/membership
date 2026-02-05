@@ -10,142 +10,295 @@
         :root { --primary: #3ecf8e; --primary-hover: #34b27b; --bg: #f0f2f5; --text: #1c1c1c; --admin: #6366f1; --grey: #94a3b8; --danger: #ef4444; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); display: flex; justify-content: center; padding: 15px; color: var(--text); line-height: 1.6; }
         .container { width: 100%; max-width: 500px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        h2 { text-align: center; color: var(--primary); margin-bottom: 25px; }
-        .nav-tabs { display: flex; gap: 5px; margin-bottom: 20px; background: #eee; padding: 5px; border-radius: 8px; }
-        .tab { flex: 1; text-align: center; padding: 10px; cursor: pointer; border-radius: 6px; font-weight: 600; font-size: 0.9rem; color: #666; transition: 0.2s; }
-        .tab.active { background: white; color: var(--primary); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .section { display: none; animation: fadeIn 0.3s ease; }
-        .section.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        label { font-size: 0.8rem; font-weight: 700; color: var(--grey); text-transform: uppercase; margin-bottom: 5px; display: block; }
-        input, select { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
-        button { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; margin-bottom: 10px; }
-        .admin-btn { background: var(--admin); }
-        .danger-btn { background: var(--danger); margin-top: 20px; }
+        h2 { margin-top: 0; text-align: center; font-size: 1.6rem; }
+        h3 { margin-top: 0; font-size: 1.4rem; }
+        input, select { width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        .password-wrapper { position: relative; width: 100%; }
+        .toggle-password { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 1.2rem; color: #64748b; user-select: none; z-index: 10; }
+        button { width: 100%; padding: 16px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 1.1rem; cursor: pointer; margin-top: 10px; }
+        .secondary-btn { background: #f1f5f9; color: #475569; font-size: 0.95rem; padding: 12px; }
+        .tab-nav { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab-nav button { margin-top: 0; flex: 1; font-size: 0.9rem; padding: 12px; color: white; }
+        #search-tab-btn { background: var(--grey); }
+        #search-tab-btn.active { background: var(--primary); }
+        #admin-tab-btn { background: var(--grey); }
+        #admin-tab-btn.active { background: var(--admin); }
+        .result-item { background: #f8fafc; padding: 20px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #e2e8f0; }
+        .member-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+        .member-name { font-size: 1.3rem; font-weight: bold; color: #1e293b; }
+        .member-details { font-size: 1.1rem; color: #475569; }
+        .result-address { color: #64748b; font-size: 1rem; margin-top: 12px; padding-top: 12px; border-top: 1px solid #e2e8f0; }
+        .nok-btn { width: auto; padding: 10px 20px; font-size: 1rem; background: #3b82f6; margin-top: 0; }
+        .nok-container { margin-top: 15px; padding: 15px; background: #ffffff; border: 1px dashed #3b82f6; border-radius: 8px; }
+        .drop-zone { border: 2px dashed var(--primary); padding: 30px; text-align: center; border-radius: 10px; cursor: pointer; background: #f9fffb; }
+        .empty-state { text-align: center; padding: 30px; color: #64748b; font-size: 1.1rem; }
         .hidden { display: none; }
-        .message { padding: 12px; border-radius: 8px; text-align: center; margin-bottom: 15px; font-size: 0.9rem; font-weight: 600; }
+        .message { padding: 15px; border-radius: 8px; text-align: center; margin-top: 10px; font-weight: bold; }
         .error { background: #fee2e2; color: #ef4444; }
         .success { background: #dcfce7; color: #16a34a; }
+        .logout-btn { background: var(--danger) !important; color: white; margin-top: 30px; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h2 id="title">AAC Members</h2>
-
+    
     <div id="msg" class="message hidden"></div>
 
-    <div id="login-section" class="section">
+    <div id="login-section">
         <input type="email" id="email" placeholder="Email">
-        <input type="password" id="password" placeholder="Password">
+        <div class="password-wrapper">
+            <input type="password" id="password" placeholder="Password">
+            <span class="toggle-password" onclick="togglePasswordVisibility('password')">👁️</span>
+        </div>
         <button onclick="signIn()">Sign In</button>
-        <button style="background:#f1f5f9; color:#475569;" onclick="showView('forgot-section')">Forgot Password?</button>
+        <button class="secondary-btn" onclick="showView('reset-section')">Forgot Password?</button>
     </div>
 
-    <div id="forgot-section" class="section">
-        <p style="text-align:center; font-size:0.9rem;">Enter your email to receive a reset link.</p>
+    <div id="reset-section" class="hidden">
+        <p style="text-align: center;">Enter email for reset link.</p>
         <input type="email" id="reset-email" placeholder="Email Address">
         <button onclick="sendResetEmail()">Send Reset Link</button>
-        <button style="background:#f1f5f9; color:#475569;" onclick="showView('login-section')">Back to Login</button>
+        <button class="secondary-btn" onclick="showView('login-section')">Back to Login</button>
     </div>
 
-    <div id="password-update-section" class="section">
-        <h3 style="text-align:center;">Set New Password</h3>
-        <p style="text-align:center; font-size:0.9rem; color:var(--grey);">Please enter a new password for your account.</p>
+    <div id="password-update-section" class="hidden">
+        <h3 style="text-align: center;">Set New Password</h3>
+        <p style="text-align: center; font-size: 0.9rem; color: var(--grey);">Please enter a new password for your account.</p>
         <input type="password" id="new-password" placeholder="New Password (min 6 chars)">
         <button onclick="updatePassword()">Update & Log In</button>
     </div>
 
     <div id="main-app" class="hidden">
-        <div class="nav-tabs">
-            <div class="tab active" onclick="showView('profile-info')">Profile</div>
-            <div class="tab" onclick="showView('search-tab')">Search</div>
-            <div id="admin-tab-btn" class="tab hidden" onclick="showView('admin-tab')">Admin</div>
+        <div id="nav-tabs" class="tab-nav">
+            <button id="search-tab-btn" class="active" onclick="switchTab('profile-info')">Search</button>
+            <button id="admin-tab-btn" class="hidden" onclick="switchTab('etl-section')">Update Members</button>
         </div>
 
-        <div id="profile-info" class="section">
-            <div id="user-details">Loading profile...</div>
-            <button onclick="signOut()" class="danger-btn">Sign Out</button>
+        <div id="profile-info">
+            <div class="search-container">
+                <h3>Member Search</h3>
+                <input type="text" id="search-input" placeholder="Enter Name, NRIC or Phone#" onkeyup="handleKeyPress(event)">
+                <button onclick="handleSearch()">Search</button>
+                <div id="search-results" style="margin-top: 20px;"></div>
+            </div>
         </div>
 
-        <div id="search-tab" class="section">
-            <input type="text" id="search-nric" placeholder="Last 4 digits NRIC">
-            <button onclick="searchMember()">Search Member</button>
-            <div id="search-result" style="margin-top:20px;"></div>
+        <div id="etl-section" class="hidden">
+            <h3>📂 Database Sync</h3>
+            <select id="etlType">
+                <option value="membership">Member Details (AACMemberDetails)</option>
+                <option value="family">Family Members (FamilyMembersListing)</option>
+            </select>
+            <div class="drop-zone" onclick="document.getElementById('csvFile').click()">
+                <span id="fileNameDisplay">Tap to select CSV file</span>
+                <input type="file" id="csvFile" class="hidden" accept=".csv" onchange="updateFileNameDisplay()">
+            </div>
+            <button id="importBtn" onclick="runRPCImport()" style="background: #16a34a;">Upload & Sync</button>
         </div>
 
-        <div id="admin-tab" class="section">
-            <label>Import Data (CSV)</label>
-            <input type="file" id="csv-file" accept=".csv">
-            <button class="admin-btn" onclick="importCSV()">Upload & Sync</button>
-        </div>
+        <button onclick="signOut()" class="logout-btn">Sign Out</button>
     </div>
 </div>
 
 <script>
     const SUPABASE_URL = 'https://qesgfxwgbggjyvngftee.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_MJQrnWCSsg0naLA9hxkPzQ__diYSGYi';
+    const GITHUB_URL = 'https://antloh-sh.github.io/membership/';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    
+
     let isRecovering = false;
+    let idleTimer;
+
+    const etlConfig = {
+        membership: {
+            rpc: 'import_and_merge_members',
+            mapping: {
+                'RegistrationDocumentNumber': 'registrationdocumentnumber',
+                'FullNameNative': 'fullnamenative',
+                'ToAddressAs': 'toaddressas',
+                'DateOfBirth': 'dateofbirth',
+                'Gender': 'gender',
+                'Phone': 'phone',
+                'ResidesWithinServiceBoundaryStr': 'resideswithinserviceboundarystr',
+                'FullAddress': 'fulladdress'
+            }
+        },
+        family: {
+            rpc: 'import_and_merge_family',
+            mapping: {
+                'Patient_NRIC_Fin_Passport_No___': 'patientnricfinpassportno',
+                'Family_Member_Name__': 'familymembername',
+                'Relationship____To_follow_ILTC_Master_List_': 'relationshiptofollowiltcmasterlist',
+                'Home_Phone': 'homephone',
+                'Mobile_Phone': 'mobilephone'
+            }
+        }
+    };
+
+    // Original App Functions
+    function resetIdleTimer() {
+        clearTimeout(idleTimer);
+        idleTimer = setTimeout(autoLogout, 900000); 
+    }
+    function autoLogout() { signOut(); }
+    window.onmousemove = resetIdleTimer;
+    window.onmousedown = resetIdleTimer; 
+    window.ontouchstart = resetIdleTimer; 
+    window.onclick = resetIdleTimer;     
+    window.onkeypress = resetIdleTimer;   
+
+    function handleKeyPress(event) { if (event.key === "Enter") handleSearch(); }
 
     function showMsg(text, type) {
-        const m = document.getElementById('msg');
-        m.innerText = text; m.className = `message ${type}`; m.classList.remove('hidden');
-        setTimeout(() => m.classList.add('hidden'), 5000);
+        const msgDiv = document.getElementById('msg');
+        msgDiv.innerText = text;
+        msgDiv.className = `message ${type}`;
+        msgDiv.classList.remove('hidden');
+        setTimeout(() => msgDiv.classList.add('hidden'), 5000);
     }
 
-    function showView(viewId) {
-        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        const target = document.getElementById(viewId);
-        if(target) target.classList.add('active');
-        
-        const tab = Array.from(document.querySelectorAll('.tab')).find(t => t.innerText.toLowerCase() === viewId.split('-')[0]);
-        if(tab) tab.classList.add('active');
+    function showView(sectionId) {
+        const sections = ['login-section', 'reset-section', 'profile-info', 'etl-section', 'password-update-section'];
+        sections.forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.classList.add('hidden');
+        });
+        document.getElementById(sectionId).classList.remove('hidden');
     }
 
+    function switchTab(viewId) {
+        showView(viewId);
+        document.querySelectorAll('.tab-nav button').forEach(b => b.classList.remove('active'));
+        document.getElementById(viewId === 'profile-info' ? 'search-tab-btn' : 'admin-tab-btn').classList.add('active');
+    }
+
+    function updateFileNameDisplay() {
+        const f = document.getElementById('csvFile').files[0];
+        document.getElementById('fileNameDisplay').innerText = f ? f.name : "Tap to select CSV file";
+    }
+
+    function togglePasswordVisibility(inputId) {
+        const input = document.getElementById(inputId);
+        const icon = input.nextElementSibling;
+        input.type = input.type === "password" ? "text" : "password";
+        icon.innerText = input.type === "password" ? "👁️" : "🔒";
+    }
+
+    // AUTH FUNCTIONS
     async function signIn() {
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-        const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-        if (error) showMsg(error.message, 'error');
-        else window.location.reload();
+        const { error } = await supabaseClient.auth.signInWithPassword({
+            email: document.getElementById('email').value,
+            password: document.getElementById('password').value
+        });
+        if (error) return showMsg(error.message, 'error');
+        window.location.reload();
     }
 
     async function sendResetEmail() {
         const email = document.getElementById('reset-email').value;
         const redirectUrl = window.location.origin + window.location.pathname;
         const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: redirectUrl });
-        if (error) showMsg(error.message, "error");
-        else showMsg("Reset link sent to your email!", "success");
+        if (error) return showMsg(error.message, "error");
+        showMsg("Reset link sent to your email!", "success");
     }
 
     async function updatePassword() {
         const newPassword = document.getElementById('new-password').value;
         if (newPassword.length < 6) return showMsg("Min 6 characters required", "error");
-
         const { error } = await supabaseClient.auth.updateUser({ password: newPassword });
         if (error) showMsg(error.message, "error");
         else {
             alert("Password updated successfully!");
             await supabaseClient.auth.signOut();
-            window.location.href = window.location.origin + window.location.pathname;
+            window.location.href = GITHUB_URL;
         }
     }
 
     async function signOut() { 
         await supabaseClient.auth.signOut(); 
-        window.location.reload(); 
+        window.location.href = GITHUB_URL; 
     }
 
+    // SEARCH & IMPORT LOGIC (RESTORED)
+    async function handleSearch() {
+        const term = document.getElementById('search-input').value.trim();
+        const resultsDiv = document.getElementById('search-results');
+        if (term.length < 2) return;
+        resultsDiv.innerHTML = "<p>Searching...</p>";
+        const { data, error } = await supabaseClient.rpc('search_members_generic', { search_term: term });
+        if (error) {
+            resultsDiv.innerHTML = `<div class="message error">${error.message}</div>`;
+            return;
+        }
+        if (!data || data.length === 0) {
+            resultsDiv.innerHTML = `<div class="empty-state"><p>🚫 No results found</p></div>`;
+            return;
+        }
+        resultsDiv.innerHTML = data.map(member => `
+            <div class="result-item">
+                <div class="member-header">
+                    <div class="member-name">${member.fullnamenative} ${member.toaddressas ? `(${member.toaddressas})` : ''}</div>
+                    <button class="nok-btn" onclick="fetchNOK('${member.registrationdocumentnumber}')">NOK</button>
+                </div>
+                <div class="member-details">
+                    <strong>NRIC:</strong> ${member.registrationdocumentnumber}<br>
+                    <strong>Tel:</strong> ${member.phone || 'N/A'}
+                </div>
+                <div class="result-address"><strong>Address:</strong><br>${member.fulladdress || 'N/A'}</div>
+                <div id="nok-list-${member.registrationdocumentnumber}" class="nok-container hidden"></div>
+            </div>
+        `).join('');
+    }
+
+    async function fetchNOK(regNo) {
+        const container = document.getElementById(`nok-list-${regNo}`);
+        if (!container.classList.contains('hidden')) { container.classList.add('hidden'); return; }
+        container.classList.remove('hidden');
+        container.innerHTML = "Loading NOK...";
+        const { data } = await supabaseClient.rpc('get_member_nok', { reg_no: regNo });
+        if (!data || data.length === 0) { container.innerHTML = "<p>No NOK found.</p>"; return; }
+        container.innerHTML = `<div style="font-weight:bold; color:#3b82f6;">Family Contacts:</div>` + 
+            data.map(nok => `<div style="font-size:1rem; padding:8px 0; border-bottom:1px solid #eee;">
+                <strong>${nok.familymembername}</strong> (${nok.relationshiptofollowiltcmasterlist || 'N/A'})<br>
+                Mobile: ${nok.mobilephone || 'N/A'}</div>`).join('');
+    }
+
+    async function runRPCImport() {
+        const file = document.getElementById('csvFile').files[0];
+        const setup = etlConfig[document.getElementById('etlType').value];
+        if (!file) return showMsg("Please select a file.", "error");
+        Papa.parse(file, {
+            header: true, skipEmptyLines: true,
+            complete: async function(results) {
+                const transformed = results.data.map(row => {
+                    let r = {};
+                    for (let k in setup.mapping) {
+                        let v = row[k] || "";
+                        if (k === 'ResidesWithinServiceBoundaryStr') v = v.toLowerCase() === 'yes' ? 'true' : 'false';
+                        if (k === 'DateOfBirth' && v.includes('-')) {
+                            const d = new Date(v); if (!isNaN(d)) v = d.toISOString().split('T')[0];
+                        }
+                        r[setup.mapping[k]] = v;
+                    }
+                    return r;
+                });
+                showMsg("Syncing with database...", "success");
+                const { error } = await supabaseClient.rpc(setup.rpc, { import_data: transformed });
+                if (error) return showMsg(error.message, "error");
+                showMsg("Database Sync Successful!", "success");
+            }
+        });
+    }
+
+    // INITIALIZATION
     window.onload = async () => {
-        // Listen for the recovery event
+        resetIdleTimer();
+        
         supabaseClient.auth.onAuthStateChange((event) => {
             if (event === "PASSWORD_RECOVERY") {
                 isRecovering = true;
-                document.getElementById('login-section').classList.add('hidden');
-                document.getElementById('main-app').classList.add('hidden');
                 showView('password-update-section');
             }
         });
@@ -160,20 +313,13 @@
                 document.getElementById('login-section').classList.add('hidden');
                 document.getElementById('title').classList.add('hidden');
                 showView('profile-info');
-                
                 const { data: profile } = await supabaseClient.from('profiles').select('role').eq('id', session.user.id).single();
                 if (profile?.role === 'admin') document.getElementById('admin-tab-btn').classList.remove('hidden');
-                
-                document.getElementById('user-details').innerHTML = `<p><strong>Email:</strong> ${session.user.email}</p><p><strong>Role:</strong> ${profile?.role || 'Member'}</p>`;
             } else {
                 showView('login-section');
             }
         }, 150);
     };
-
-    // Placeholder for search/import functions from your original file
-    async function searchMember() { /* logic from your index(2).html */ }
-    async function importCSV() { /* logic from your index(2).html */ }
 </script>
 </body>
 </html>
