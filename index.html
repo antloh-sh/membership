@@ -6,6 +6,8 @@
     <title>AAC Members</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="auth-config.js"></script>
+
     <style>
         :root { --primary: #3ecf8e; --primary-hover: #34b27b; --bg: #f0f2f5; --text: #1c1c1c; --admin: #6366f1; --grey: #94a3b8; --danger: #ef4444; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); display: flex; justify-content: center; padding: 15px; color: var(--text); line-height: 1.6; }
@@ -103,19 +105,10 @@
 </div>
 
 <script>
-    const SUPABASE_URL = 'https://qesgfxwgbggjyvngftee.supabase.co';
-    const SUPABASE_ANON_KEY = 'sb_publishable_MJQrnWCSsg0naLA9hxkPzQ__diYSGYi';
-    const GITHUB_URL = 'https://antloh-sh.github.io/membership/';
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        auth: {
-            persistSession: true,
-            storage: window.sessionStorage // Switches from permanent to session-based storage
-        }
-    });
-
+    // Logic flags
     let isRecovering = false;
-    let idleTimer;
 
+    // BUSINESS LOGIC: ETL Data Mappings
     const etlConfig = {
         membership: {
             rpc: 'import_and_merge_members',
@@ -142,21 +135,7 @@
         }
     };
 
-    // Original App Functions
-    function resetIdleTimer() {
-        clearTimeout(idleTimer);
-        idleTimer = setTimeout(autoLogout, 900000); 
-    }
-    async function autoLogout() { 
-        console.log("Inactivity detected. Logging out...");
-        await signOut(); 
-    }
-    window.onmousemove = resetIdleTimer;
-    window.onmousedown = resetIdleTimer; 
-    window.ontouchstart = resetIdleTimer; 
-    window.onclick = resetIdleTimer;     
-    window.onkeypress = resetIdleTimer;   
-
+    // UI HELPER FUNCTIONS
     function handleKeyPress(event) { if (event.key === "Enter") handleSearch(); }
 
     function showMsg(text, type) {
@@ -194,7 +173,7 @@
         icon.innerText = input.type === "password" ? "👁️" : "🔒";
     }
 
-    // AUTH FUNCTIONS
+    // AUTH ACTIONS (Calling supabaseClient from auth-config.js)
     async function signIn() {
         const { error } = await supabaseClient.auth.signInWithPassword({
             email: document.getElementById('email').value,
@@ -219,31 +198,19 @@
         if (error) showMsg(error.message, "error");
         else {
             alert("Password updated successfully!");
-            await supabaseClient.auth.signOut();
-            window.location.href = GITHUB_URL;
+            await signOut(); // From auth-config.js
         }
     }
 
-    async function signOut() { 
-        await supabaseClient.auth.signOut(); 
-        window.location.href = GITHUB_URL; 
-    }
-
-    // SEARCH & IMPORT LOGIC (RESTORED)
+    // BUSINESS LOGIC: SEARCH & NOK
     async function handleSearch() {
         const term = document.getElementById('search-input').value.trim();
         const resultsDiv = document.getElementById('search-results');
         if (term.length < 2) return;
         resultsDiv.innerHTML = "<p>Searching...</p>";
         const { data, error } = await supabaseClient.rpc('search_members_generic', { search_term: term });
-        if (error) {
-            resultsDiv.innerHTML = `<div class="message error">${error.message}</div>`;
-            return;
-        }
-        if (!data || data.length === 0) {
-            resultsDiv.innerHTML = `<div class="empty-state"><p>🚫 No results found</p></div>`;
-            return;
-        }
+        if (error) { resultsDiv.innerHTML = `<div class="message error">${error.message}</div>`; return; }
+        if (!data || data.length === 0) { resultsDiv.innerHTML = `<div class="empty-state"><p>🚫 No results found</p></div>`; return; }
         resultsDiv.innerHTML = data.map(member => `
             <div class="result-item">
                 <div class="member-header">
@@ -273,6 +240,7 @@
                 Mobile: ${nok.mobilephone || 'N/A'}</div>`).join('');
     }
 
+    // BUSINESS LOGIC: DATABASE SYNC
     async function runRPCImport() {
         const file = document.getElementById('csvFile').files[0];
         const setup = etlConfig[document.getElementById('etlType').value];
@@ -302,7 +270,7 @@
 
     // INITIALIZATION
     window.onload = async () => {
-        resetIdleTimer();
+        resetIdleTimer(); // Shared function
         
         supabaseClient.auth.onAuthStateChange((event) => {
             if (event === "PASSWORD_RECOVERY") {
@@ -321,6 +289,7 @@
                 document.getElementById('login-section').classList.add('hidden');
                 document.getElementById('title').classList.add('hidden');
                 showView('profile-info');
+                // Role-based view check
                 const { data: profile } = await supabaseClient.from('profiles').select('role').eq('id', session.user.id).single();
                 if (profile?.role === 'admin') document.getElementById('admin-tab-btn').classList.remove('hidden');
             } else {
