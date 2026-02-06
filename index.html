@@ -106,7 +106,12 @@
     const SUPABASE_URL = 'https://qesgfxwgbggjyvngftee.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_MJQrnWCSsg0naLA9hxkPzQ__diYSGYi';
     const GITHUB_URL = 'https://antloh-sh.github.io/membership/';
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: {
+            persistSession: true,
+            storage: window.sessionStorage // Switches from permanent to session-based storage
+        }
+    });
 
     let isRecovering = false;
     let idleTimer;
@@ -142,7 +147,10 @@
         clearTimeout(idleTimer);
         idleTimer = setTimeout(autoLogout, 900000); 
     }
-    function autoLogout() { signOut(); }
+    async function autoLogout() { 
+        console.log("Inactivity detected. Logging out...");
+        await signOut(); 
+    }
     window.onmousemove = resetIdleTimer;
     window.onmousedown = resetIdleTimer; 
     window.ontouchstart = resetIdleTimer; 
