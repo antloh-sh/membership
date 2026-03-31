@@ -32,7 +32,8 @@
         .result-address { color: #64748b; font-size: 1rem; margin-top: 12px; padding-top: 12px; border-top: 1px solid #e2e8f0; }
         .nok-btn { width: auto; padding: 10px 20px; font-size: 1rem; background: #3b82f6; margin-top: 0; }
         .nok-container { margin-top: 15px; padding: 15px; background: #ffffff; border: 1px dashed #3b82f6; border-radius: 8px; }
-        .drop-zone { border: 2px dashed var(--primary); padding: 30px; text-align: center; border-radius: 10px; cursor: pointer; background: #f9fffb; }
+        .drop-zone { border: 2px dashed var(--primary); padding: 30px; text-align: center; border-radius: 10px; cursor: pointer; background: #f9fffb; transition: border 0.2s, background 0.2s; }
+        .drop-zone.selected { border: 2px solid var(--primary); background: #dcfce7; }
         .empty-state { text-align: center; padding: 30px; color: #64748b; font-size: 1.1rem; }
         .hidden { display: none; }
         .message { padding: 15px; border-radius: 8px; text-align: center; margin-top: 10px; font-weight: bold; }
@@ -176,6 +177,7 @@
     function updateDropLabel(inputId, labelId) {
         const f = document.getElementById(inputId).files[0];
         document.getElementById(labelId).innerText = f ? f.name : (labelId === 'membershipFileDisplay' ? "Tap to select AACMemberDetails CSV" : "Tap to select FamilyMembersListing CSV");
+        document.getElementById(inputId).closest('.drop-zone').classList.toggle('selected', !!f);
     }
 
     function togglePasswordVisibility(inputId) {
