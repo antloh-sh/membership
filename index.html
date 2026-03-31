@@ -89,15 +89,26 @@
 
         <div id="etl-section" class="hidden">
             <h3>📂 Database Sync</h3>
-            <select id="etlType">
-                <option value="membership">Member Details (AACMemberDetails)</option>
-                <option value="family">Family Members (FamilyMembersListing)</option>
-            </select>
-            <div class="drop-zone" onclick="document.getElementById('csvFile').click()">
-                <span id="fileNameDisplay">Tap to select CSV file</span>
-                <input type="file" id="csvFile" class="hidden" accept=".csv" onchange="updateFileNameDisplay()">
+            <p style="color:#64748b; font-size:0.95rem; margin:0 0 14px;">Select one or both files, then tap <strong>Upload & Sync</strong>.</p>
+
+            <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:14px;">
+                <div>
+                    <div style="font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.04em;">Member Details</div>
+                    <div class="drop-zone" onclick="document.getElementById('csvMembership').click()">
+                        <span id="membershipFileDisplay">Tap to select AACMemberDetails CSV</span>
+                        <input type="file" id="csvMembership" class="hidden" accept=".csv" onchange="updateDropLabel('csvMembership','membershipFileDisplay')">
+                    </div>
+                </div>
+                <div>
+                    <div style="font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.04em;">Family Members</div>
+                    <div class="drop-zone" onclick="document.getElementById('csvFamily').click()">
+                        <span id="familyFileDisplay">Tap to select FamilyMembersListing CSV</span>
+                        <input type="file" id="csvFamily" class="hidden" accept=".csv" onchange="updateDropLabel('csvFamily','familyFileDisplay')">
+                    </div>
+                </div>
             </div>
-            <button id="importBtn" onclick="runRPCImport()" style="background: #16a34a;">Upload & Sync</button>
+
+            <button id="importBtn" onclick="runRPCImportBoth()" style="background: #16a34a;">Upload & Sync</button>
         </div>
 
         <button onclick="signOut()" class="logout-btn">Sign Out</button>
@@ -120,7 +131,8 @@
                 'Gender': 'gender',
                 'Phone': 'phone',
                 'ResidesWithinServiceBoundaryStr': 'resideswithinserviceboundarystr',
-                'FullAddress': 'fulladdress'
+                'FullAddress': 'fulladdress',
+                'CurrentMembershipStatus': 'currentmembershipstatus'
             }
         },
         family: {
@@ -161,9 +173,9 @@
         document.getElementById(viewId === 'profile-info' ? 'search-tab-btn' : 'admin-tab-btn').classList.add('active');
     }
 
-    function updateFileNameDisplay() {
-        const f = document.getElementById('csvFile').files[0];
-        document.getElementById('fileNameDisplay').innerText = f ? f.name : "Tap to select CSV file";
+    function updateDropLabel(inputId, labelId) {
+        const f = document.getElementById(inputId).files[0];
+        document.getElementById(labelId).innerText = f ? f.name : (labelId === 'membershipFileDisplay' ? "Tap to select AACMemberDetails CSV" : "Tap to select FamilyMembersListing CSV");
     }
 
     function togglePasswordVisibility(inputId) {
@@ -214,7 +226,10 @@
         resultsDiv.innerHTML = data.map(member => `
             <div class="result-item">
                 <div class="member-header">
-                    <div class="member-name">${member.fullnamenative} ${member.toaddressas ? `(${member.toaddressas})` : ''}</div>
+                    <div>
+                        <div class="member-name">${member.fullnamenative} ${member.toaddressas ? `(${member.toaddressas})` : ''}</div>
+                        ${member.currentmembershipstatus === 'Terminated' ? `<span style="color:#ef4444; font-weight:600; font-size:0.9rem;">Terminated</span>` : ''}
+                    </div>
                     <button class="nok-btn" onclick="fetchNOK('${member.registrationdocumentnumber}')">NOK</button>
                 </div>
                 <div class="member-details">
@@ -242,31 +257,61 @@
     }
 
     // BUSINESS LOGIC: DATABASE SYNC
-    async function runRPCImport() {
-        const file = document.getElementById('csvFile').files[0];
-        const setup = etlConfig[document.getElementById('etlType').value];
-        if (!file) return showMsg("Please select a file.", "error");
-        Papa.parse(file, {
-            header: true, skipEmptyLines: true,
-            complete: async function(results) {
-                const transformed = results.data.map(row => {
-                    let r = {};
-                    for (let k in setup.mapping) {
-                        let v = row[k] || "";
-                        if (k === 'ResidesWithinServiceBoundaryStr') v = v.toLowerCase() === 'yes' ? 'true' : 'false';
-                        if (k === 'DateOfBirth' && v.includes('-')) {
-                            const d = new Date(v); if (!isNaN(d)) v = d.toISOString().split('T')[0];
+    function parseAndTransform(file, setup) {
+        return new Promise((resolve, reject) => {
+            Papa.parse(file, {
+                header: true, skipEmptyLines: true,
+                complete(results) {
+                    const transformed = results.data.map(row => {
+                        let r = {};
+                        for (let k in setup.mapping) {
+                            let v = row[k] || "";
+                            if (k === 'ResidesWithinServiceBoundaryStr') v = v.toLowerCase() === 'yes' ? 'true' : 'false';
+                            if (k === 'DateOfBirth' && v.includes('-')) {
+                                const d = new Date(v); if (!isNaN(d)) v = d.toISOString().split('T')[0];
+                            }
+                            r[setup.mapping[k]] = v;
                         }
-                        r[setup.mapping[k]] = v;
-                    }
-                    return r;
-                });
-                showMsg("Syncing with database...", "success");
-                const { error } = await supabaseClient.rpc(setup.rpc, { import_data: transformed });
-                if (error) return showMsg(error.message, "error");
-                showMsg("Database Sync Successful!", "success");
-            }
+                        return r;
+                    });
+                    resolve(transformed);
+                },
+                error: reject
+            });
         });
+    }
+
+    async function runRPCImportBoth() {
+        const membershipFile = document.getElementById('csvMembership').files[0];
+        const familyFile = document.getElementById('csvFamily').files[0];
+        if (!membershipFile && !familyFile) return showMsg("Please select at least one file.", "error");
+
+        document.getElementById('importBtn').disabled = true;
+        showMsg("Syncing with database...", "success");
+
+        try {
+            const results = [];
+
+            if (membershipFile) {
+                const data = await parseAndTransform(membershipFile, etlConfig.membership);
+                const { error } = await supabaseClient.rpc(etlConfig.membership.rpc, { import_data: data });
+                if (error) throw new Error(`Member Details: ${error.message}`);
+                results.push("Member Details ✓");
+            }
+
+            if (familyFile) {
+                const data = await parseAndTransform(familyFile, etlConfig.family);
+                const { error } = await supabaseClient.rpc(etlConfig.family.rpc, { import_data: data });
+                if (error) throw new Error(`Family Members: ${error.message}`);
+                results.push("Family Members ✓");
+            }
+
+            showMsg(`Sync Successful: ${results.join(", ")}`, "success");
+        } catch (e) {
+            showMsg(e.message, "error");
+        } finally {
+            document.getElementById('importBtn').disabled = false;
+        }
     }
 
     // INITIALIZATION
