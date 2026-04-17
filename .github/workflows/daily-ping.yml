@@ -1,22 +1,32 @@
-name: Daily Supabase Healthcheck
+name: Weekly Supabase Activity Healthcheck
 
 on:
   schedule:
-    # Runs once per day at 00:00 UTC; modify as needed
-    - cron: '0 0 * * *'
-  workflow_dispatch: {}
+    # Runs once per week (Monday 01:00 UTC)
+    - cron: '0 1 * * 1'
+  workflow_dispatch:
 
 jobs:
   ping:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Run healthcheck
+      - name: Randomise execution time
+        shell: bash
+        run: |
+          # Random delay between 0 and 6 hours (0–21600 seconds)
+          DELAY=$(( RANDOM % 21601 ))
+          echo "Sleeping for $DELAY seconds to randomise weekly activity timing..."
+          sleep "$DELAY"
+
+      - name: Run Supabase activity healthcheck
+        shell: bash
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          chmod +x ./ping/healthcheck.sh
-          ./ping/healthcheck.sh
+          chmod +x ./healthcheck.sh
+          ./healthcheck.sh
