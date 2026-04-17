@@ -1,50 +1,55 @@
 #!/usr/bin/env bash
-# Simple ping script for Supabase RPC healthcheck
-# Expects SUPABASE_URL and SUPABASE_ANON_KEY to be set in the environment.
-# Does not echo secrets to logs.
+#
+# Supabase real-activity healthcheck
+# Reads from public.activities to generate legitimate DB activity
+#
 
 set -euo pipefail
 
 SUPABASE_URL="${SUPABASE_URL:-}"
 SUPABASE_ANON_KEY="${SUPABASE_ANON_KEY:-}"
 
+TABLE_NAME="activities"
+COLUMN_NAME="id"
+
 if [[ -z "$SUPABASE_URL" || -z "$SUPABASE_ANON_KEY" ]]; then
   echo "ERROR: SUPABASE_URL and SUPABASE_ANON_KEY must be set"
   exit 2
 fi
 
-RPC_PATH="/rest/v1/rpc/healthcheck"
-URL="${SUPABASE_URL%/}${RPC_PATH}"
+URL="${SUPABASE_URL}/rest/v1/${TABLE_NAME}?select=${COLUMN_NAME}&limit=1"
 
-# Function to call RPC and print status + body (without revealing keys)
-call_rpc() {
-  http_status=$(curl -sS -w "%{http_code}" -o /tmp/healthcheck_response.txt \
-    -X POST "$URL" \
-    -H "Content-Type: application/json" \
-    -H "apikey: ${SUPABASE_ANON_KEY}" \
-    -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
-    --data '{}') || curl_exit=$?
-  body=$(cat /tmp/healthcheck_response.txt || true)
-  echo "HTTP ${http_status}"
-  redacted_body="${body//${SUPABASE_ANON_KEY}/REDACTED}"
-  echo "BODY: ${redacted_body}"
+call_query() {
+  http_status=$(
+    curl -sS -w "%{http_code}" \
+      -o /tmp/healthcheck_response.txt \
+      -X GET "$URL" \
+      -H "Content-Type: application/json" \
+      -H "apikey: $SUPABASE_ANON_KEY" \
+      -H "Authorization: Bearer $SUPABASE_ANON_KEY"
+  ) || return 1
+
+  body="$(cat /tmp/healthcheck_response.txt || true)"
   rm -f /tmp/healthcheck_response.txt
-  # Treat any 2xx as success
-  if [[ "${http_status}" =~ ^2[0-9]{2}$ ]]; then
+
+  echo "HTTP $http_status"
+
+  if [[ "$http_status" =~ ^2 ]]; then
     return 0
   else
+    echo "BODY: $body"
     return 1
   fi
 }
 
-# Try once, retry after short backoff if non-2xx
-if call_rpc; then
-  echo "Healthcheck succeeded."
+# Run once, retry once
+if call_query; then
+  echo "Healthcheck succeeded (activities table read)."
   exit 0
 else
   echo "Healthcheck failed, retrying in 10s..."
   sleep 10
-  if call_rpc; then
+  if call_query; then
     echo "Healthcheck succeeded on retry."
     exit 0
   else
